@@ -5,6 +5,7 @@ Icon?
 
 # hide original data files
 /data_originals/
+/data_outputs/
 
 # History files
 .Rhistory
