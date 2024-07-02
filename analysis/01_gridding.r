@@ -12,13 +12,14 @@ require(ggplot2)
 require(rnaturalearth)
 require(dggridR)
 require(rfishbase)
+require(beepr)
 
-# global analysis parameters
+# global parameters
 G = 0.04 # grid cell size in sq km
 
 # load in data
 tempdt <- read_csv('data_outputs/001_dyiigurra_macro_obs.csv')
-tempdt2 <- read_csv('data_outputs/45_moorea_lter_obs.csv')
+tempdt2 <- read_csv('data_outputs/BT45_moorea_lter_obs.csv')
 dt_assemblage <- bind_rows(tempdt, tempdt2)
 rm(tempdt, tempdt2)
 
@@ -27,16 +28,39 @@ View(dt_assemblage)
 # CHECK DATA ------------------------------------------------------
 # global taxonomy check
 
+# make a column to help with identifying uncertain records
+dt_assemblage <- dt_assemblage %>% 
+    mutate(taxon_resolution = case_when(str_detect(Species, 'sp\\d*$') & is.na(Family) == F ~ 'genus', 
+                                        is.na(Family) == F & is.na(Genus) ~ 'family',
+                                        str_detect(Species, 'sp\\d*$') == F ~ 'species',
+                                        str_detect(Genus, 'Scari(ni|nae)') ~ 'family'))
+dt_assemblage %>% distinct(Genus, Species)
+
+sp <- dt_assemblage %>% filter(taxon_resolution == 'species') %>% 
+    distinct(Genus, Species) %>% arrange(Genus, Species) %>%
+    mutate(temp = paste(Genus, Species, sep = ' ')) %>%
+    pull(temp)
+
+dt_spcheck <- validate_names(sp) # check against FishBase
+dt_spcheck <- tibble(input = sp, validated = dt_spcheck)
+dt_spcheck %>% filter(is.na(validated)) %>% View
+
+# misspelling replace
+dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')] <- str_replace(dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')], 'nigros', 'nigrofuscus')
+dt_assemblage <- filter(dt_assemblage, Species != 'Teleostei unidentified') # omit
+
 dt_assemblage %>% distinct(Family, Genus, Species) %>%
     arrange(Family, Genus, Species)%>% View
 dt_assemblage %>% distinct(Genus, Species) %>% 
-    filter(str_detect(Genus, 'idae')) %>% View
+    filter(str_detect(Genus, 'idae'))
 
-# NAs for non specific uncertain IDs
-dt_assemblage$Genus[str_detect(dt_assemblage$Genus, 'idae$') & dt_assemblage$Species == 'sp'] <- NA
-dt_assemblage$Genus[is.na(dt_assemblage$Genus) & dt_assemblage$Species == 'sp'] <- NA
+rm(sp, dt_spcheck)
 
 # GRID DATA -------------------------------------------------------
+# not all datasets use permanent locations
+# there is no way to determine time-series based on coordinates with multiple sampling regimes
+# so we need to grid by a reasonable resolution
+# sampling events per year per grid cell per dataset = time series
 
 proj = '+proj=eqearth +lon_0=160 +x_0=0 +y_0=0 +R=6371008.7714 +units=m +no_defs +type=crs'
 # construct grid
@@ -52,50 +76,54 @@ dt_coord$gridcell <- grid_match$seqnum # match with coordinates
 View(dt_coord)
 dt_assemblage <- left_join(dt_assemblage, dt_coord, by = c("Latitude", "Longitude", 'DataID'))
 
-# visual checks
-# mostly years and sampling events per cell
+## VISUAL CHECKS -------------------------------------------------------
+# tread carefully... plotting everything will take forever
 
-cellcount <- dt_assemblage %>% group_by(gridcell, DataID) %>% 
-    summarise(yearN = n_distinct(Year), eventN = n_distinct(SamplingEventID))
-grid_count <- dgcellstogrid(grid, cellcount$gridcell) %>% 
-    left_join(., cellcount, by = c('seqnum' = 'gridcell'))
+# cellcount <- dt_assemblage %>% group_by(gridcell, DataID) %>% 
+#     summarise(yearN = n_distinct(Year), eventN = n_distinct(SamplingEventID))
+# grid_count <- dgcellstogrid(grid, cellcount$gridcell) %>% 
+#     left_join(., cellcount, by = c('seqnum' = 'gridcell'))
 
-world <- ne_countries(scale = 'medium', returnclass = 'sf') %>% 
-st_make_valid() %>% st_break_antimeridian(., lon_0 = 160)
+# world <- ne_countries(scale = 'medium', returnclass = 'sf') %>% 
+# st_make_valid() %>% st_break_antimeridian(., lon_0 = 160)
 
-# Dyiigurra
-lon = c(min(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'macro')]),
-        max(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'macro')]))
-lat = c(min(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'macro')]),
-        max(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'macro')]))
-ggplot() +
-  geom_sf(data = world, aes(group = admin), color='grey40', fill='grey95') +
-  geom_sf(data = grid_count, aes(fill = yearN), shape = 21, size = 2) +
-  guides(fill = 'none') + 
-  coord_sf(xlim = lon, ylim = lat) +
-  theme_minimal()
+# # Dyiigurra
+# lon = c(min(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'macro')]),
+#         max(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'macro')]))
+# lat = c(min(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'macro')]),
+#         max(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'macro')]))
+# ggplot() +
+#   geom_sf(data = world, aes(group = admin), color='grey40', fill='grey95') +
+#   geom_sf(data = grid_count, aes(fill = yearN), shape = 21, size = 2) +
+#   guides(fill = 'none') + 
+#   coord_sf(xlim = lon, ylim = lat) +
+#   theme_minimal()
 
-# Mo'orea
-lon = c(min(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'moorea')]),
-        max(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'moorea')]))
-lat = c(min(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'moorea')]),
-        max(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'moorea')]))
-ggplot() +
-  geom_sf(data = world, aes(group = admin), color='grey40', fill='grey95') +
-  geom_sf(data = grid_count, aes(fill = yearN), shape = 21, size = 2) +
-  guides(fill = 'none') + 
-  coord_sf(xlim = lon, ylim = lat) +
-  theme_minimal()
+# # Mo'orea
+# lon = c(min(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'moorea')]),
+#         max(dt_assemblage$Longitude[str_detect(dt_assemblage$DataID, 'moorea')]))
+# lat = c(min(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'moorea')]),
+#         max(dt_assemblage$Latitude[str_detect(dt_assemblage$DataID, 'moorea')]))
+# ggplot() +
+#   geom_sf(data = world, aes(group = admin), color='grey40', fill='grey95') +
+#   geom_sf(data = grid_count, aes(fill = yearN), shape = 21, size = 2) +
+#   guides(fill = 'none') + 
+#   coord_sf(xlim = lon, ylim = lat) +
+#   theme_minimal()
 
-rm(world, lon, lat, cellcount, grid_match)
-View(grid_count)
-rm(grid_count)
+# rm(world, lon, lat, cellcount, grid_match, dt_coord)
+# View(grid_count)
+# rm(grid_count)
 
 # RAREFY -----------------------------------------------------------
 
-# dataset > grid cell > year > sampling event
-# grid cell becomes the proxy for location
-# sampling events per year has to be equal
+# data structure now: dataset > grid cell > year > sampling event
+# if there's any discrepancy in sampling effort within the grid cell
+# find minimum number of sampling events in a year across the time series
+# downsample the time-series years to match that number
+# consistent number of sampling events
+
+set.seed(24)
 
 # rarefy based on sampling events per year
 for (D in 1:n_distinct(dt_assemblage$DataID)) {
@@ -123,4 +151,55 @@ for (D in 1:n_distinct(dt_assemblage$DataID)) {
             bind_rows(dt_rareass, .)
     }
 }
-rm(rN, D, events, dataid, G)
+
+
+# number of resampling iterations
+# creates sub datasets
+dt_rareass$iter <- 1 # if you choose to do multiple resampling iterations
+iter = 100
+
+for (D in 1:n_distinct(dt_assemblage$DataID)) {
+    dataid  <-  unique(dt_assemblage$DataID)[D]
+    # get the lowest common denominator across years rN
+    rN <- dt_assemblage %>% filter(DataID == dataid)  %>%
+        group_by(DataID, gridcell, Year) %>% 
+        summarise(eventN = n_distinct(SamplingEventID))  %>%
+        pull(eventN) %>% min() 
+    for (i in 1:(iter - 1)) { # rinse and repeat
+        # randomly select the sampling events
+        events <- dt_assemblage %>% filter(DataID == dataid) %>%
+        distinct(gridcell, Year, SamplingEventID) %>%
+        group_by(gridcell, Year) %>% sample_n(rN, replace = FALSE) %>%
+        pull(SamplingEventID)
+
+        # check if the new object exists yet
+        dt_rareass <- dt_assemblage %>% 
+            filter(DataID == dataid, SamplingEventID %in% events) %>%
+            mutate(iter = i+1) %>% bind_rows(dt_rareass, .) # name the iteration
+    }
+}  
+beep()
+rm(i, rN, D, events, dataid, G)
+# generate rarefy ID (= DataID x grid cell)
+dt_rareass$rareID <- with(dt_rareass, paste(DataID, gridcell, sep = "_"))
+
+# DATA CHECKS -----------------------------------------------------------
+# check the rarefied, gridded time series
+
+summary(dt_rareass)
+# time series durations
+dt_rareass %>% group_by(rareID) %>% 
+    summarise(yearN = max(Year) - min(Year) + 1) %>% summary
+
+dt_rareass %>% group_by(rareID) %>% 
+    summarise(yearN = max(Year) - min(Year) + 1) %>%
+    pull(yearN) %>% hist
+
+# rarefaction check
+dt_rareass %>% group_by(rareID, Year) %>%
+    summarise(samplingN = n_distinct(SamplingEventID)) %>%
+    ungroup() %>% group_by(rareID) %>%
+    summarise(min_samp = min(samplingN), max_samp = max(samplingN),
+    consistent = case_when(min_samp == max_samp ~ 'Y', 
+                           min_samp != max_samp ~ 'N')) %>%
+    filter(consistent == 'N') # any rarefaction failures
