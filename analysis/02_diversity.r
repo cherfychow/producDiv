@@ -4,10 +4,15 @@
 # Calculate diversity
 
 require(iNEXT)
+require(dplyr)
+require(ggplot2)
+
+source('https://gist.githubusercontent.com/cherfychow/e9ae890fd16f4c86730748c067feee2b/raw/b2db138ab8164c237129308ea643de78cd54b252/cherulean.R')
 
 # requires 01_gridding for the data source
 # iter should also be an inherited parameter
-dt_div <- dt_rareass %>% group_by(iter, rareID, Year) %>%
+dt_div <- dt_rareass %>% filter(iter >= 1, iter <= 5) %>%
+    group_by(iter, rareID, Year) %>%
     # calculate richness for each iteration
     summarise(S = n_distinct(paste0(Family, Genus, Species))) %>% 
     ungroup() %>% group_by(rareID, Year) %>%
@@ -20,45 +25,55 @@ head(dt_div)
 
 # asymptotic species richness
 # not quite sure how to integrate iterative dataset in this yet
-S_asy <- as.list(rep('', n_distinct(dt_rareass$rareID)))
-for (i in 1:5) { # up to iteration 5 for now
+for (i in 1:iter) { # up to iteration 5 for now
     for (R in 1:n_distinct(dt_rareass$rareID)) {
     rare_id <- unique(dt_rareass$rareID)[R]
     # prep data input for iNEXT
-    temp <- dt_rareass %>% filter(rareID == rare_id, iter == i) %>%
+    abund <- dt_rareass %>% filter(rareID == rare_id, iter == i) %>%
         select(Year, Abundance, Family, Genus, Species) %>%
         group_by_at(vars(-Abundance)) %>%
         # collapse length
         summarise(Abundance = sum(Abundance)) %>% ungroup %>% 
         mutate(Taxa = paste(Family, Genus, Species, sep = " "))
     # wide format    
-    temp <- temp %>% select(!c(Family:Species)) %>% 
+    abund <- abund %>% select(!c(Family:Species)) %>% 
         tidyr::pivot_wider(names_from = Year, values_from = Abundance)
-    na <- as.list(rep(0, ncol(temp)-1))
-    names(na) <- colnames(temp)[-1]
-    temp <- tidyr::replace_na(temp, na)
+    na <- as.list(rep(0, ncol(abund)-1))
+    names(na) <- colnames(abund)[-1]
+    abund <- tidyr::replace_na(abund, na)
 
     # calculate asymptotic q0
-    S_asy[[R]] <- iNEXT(x = as.data.frame(temp[-1]), q = 0, datatype = 'abundance', se = T)
-    S_asy[[R]] <- S_asy[[R]]$AsyEst %>% filter(Diversity == 'Species richness') %>%
+    temp <- iNEXT(x = as.data.frame(abund[-1]), q = 0, datatype = 'abundance', se = T)
+    # store in a tibble
+    if (exists('S_asy') == F) { # assign new
+        S_asy <- temp$AsyEst %>% filter(Diversity == 'Species richness') %>%
         select(Estimator, LCL, UCL) %>% 
-        mutate(rareID = rare_id, Year = colnames(temp)[-1], iter = i, 
-        metric = 'S_asy', .before = Estimator) %>%
+        mutate(rareID = rare_id, Year = as.numeric(colnames(abund)[-1]), iter = i, metric = 'S_asy') %>%
         rename(value = Estimator, lwr = LCL, upr = UCL)
+    } else { # append
+        S_asy <- temp$AsyEst %>% filter(Diversity == 'Species richness') %>%
+        select(Estimator, LCL, UCL) %>% 
+        mutate(rareID = rare_id, Year = as.numeric(colnames(abund)[-1]), iter = i, metric = 'S_asy') %>%
+        rename(value = Estimator, lwr = LCL, upr = UCL) %>%
+        bind_rows(S_asy, .)
+    }
     }
 }
 beep()
-rm(temp, na, rare_id, R)
-sasy <- bind_rows(S_asy)
-sasy$Year <- as.numeric(sasy$Year)
-dt_div <- bind_rows(dt_div, sasy[-3]) # join up with species richness
-rm(S_asy, sasy)
+rm(abund, temp, na, rare_id, R)
+str(S_asy)
+dt_div <- bind_rows(dt_div, S_asy[-6]) # join up with species richness
+tail(dt_div)
+rm(S_asy)
 
 # visualise
-ggplot(data = dt_div) +
+f_div <- ggplot(data = dt_div) +
     geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
-        alpha = 0.3) +
+        alpha = 0.2) +
     geom_line(aes(x = Year, y = value, color = rareID)) +
     guides(fill = 'none', color = 'none') +
-    facet_wrap(vars(metric))
+    facet_wrap(vars(metric), scales = 'free') +
+    scale_color_cherulean(palette = 'cheridis', discrete = T) +
+    scale_fill_cherulean(palette = 'cheridis', discrete = T)
 
+plotly::ggplotly(f_div)

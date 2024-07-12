@@ -74,7 +74,8 @@ length(grid_match$seqnum) == nrow(dt_coord)
 dt_coord$gridcell <- grid_match$seqnum # match with coordinates
 # merge this in
 View(dt_coord)
-dt_assemblage <- left_join(dt_assemblage, dt_coord, by = c("Latitude", "Longitude", 'DataID'))
+dt_assemblage <- left_join(dt_assemblage, dt_coord, by = c("DataID", "Latitude", "Longitude"))
+summary(dt_assemblage)
 
 ## VISUAL CHECKS -------------------------------------------------------
 # tread carefully... plotting everything will take forever
@@ -156,7 +157,7 @@ for (D in 1:n_distinct(dt_assemblage$DataID)) {
 # number of resampling iterations
 # creates sub datasets
 dt_rareass$iter <- 1 # if you choose to do multiple resampling iterations
-iter = 100
+iter = 10
 
 for (D in 1:n_distinct(dt_assemblage$DataID)) {
     dataid  <-  unique(dt_assemblage$DataID)[D]
@@ -181,7 +182,9 @@ for (D in 1:n_distinct(dt_assemblage$DataID)) {
 beep()
 rm(i, rN, D, events, dataid, G)
 # generate rarefy ID (= DataID x grid cell)
+summary(dt_rareass)
 dt_rareass$rareID <- with(dt_rareass, paste(DataID, gridcell, sep = "_"))
+
 
 # DATA CHECKS -----------------------------------------------------------
 # check the rarefied, gridded time series
@@ -198,7 +201,7 @@ dt_rareass %>% group_by(rareID) %>%
 # rarefaction check
 dt_rareass %>% group_by(rareID, Year) %>%
     summarise(samplingN = n_distinct(SamplingEventID)) %>%
-    ungroup() %>% group_by(rareID) %>%
+    ungroup() %>% group_by(sxrareID) %>%
     summarise(min_samp = min(samplingN), max_samp = max(samplingN),
     consistent = case_when(min_samp == max_samp ~ 'Y', 
                            min_samp != max_samp ~ 'N')) %>%
