@@ -6,12 +6,13 @@ Icon?
 # hide original data files
 /data_originals/
 /data_outputs/
+*.png
 
 # History files
 .Rhistory
 .Rapp.history
 # Session Data files
-.RData
+*.RData
 # User-specific files
 .Ruserdata
 # Example code in package build process
@@ -32,4 +33,3 @@ Icon?
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
-
