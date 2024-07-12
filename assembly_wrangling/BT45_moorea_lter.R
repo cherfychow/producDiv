@@ -14,10 +14,10 @@ require(lubridate)
 require(readxl)
 
 rm(list=ls())
-dataid <- '45_moorea_lter'
+dataid <- 'BT45_moorea_lter'
 
 # make sure your working directory is set before running these lines
-dt <- read_csv('data_originals/45_moorea_lter/MCR_LTER_Annual_Fish_Survey_20210108.csv')
+dt <- read_csv('data_originals/BT45_moorea_lter/MCR_LTER_Annual_Fish_Survey_20230615.csv')
 og_dt <- dt
 View(dt)
 summary(dt)
@@ -33,7 +33,6 @@ dt[which(is.na(dt$Site)),] # just the row total at the end. remove.
 dt <- dt[-which(is.na(dt$Site)),]
 
 dt %>% filter(Habitat == 'error') %>% select(Location, Habitat) # all forereef.
-dt$Habitat[which(dt$Habitat == 'error')] <- 'FO' # fix
 
 # add approximate depth information from methods
 depth <- data.frame(Habitat=sort(unique(dt$Habitat)), Depth=NA)
@@ -41,18 +40,13 @@ depth[2] <- c(1.5, 12, 10)
 
 # I have to take the bounding coordinates for each site and get a centroid. This is only applicable for the site level
 sites <- data.frame(Site=sort(unique(dt$Site)), Latitude=NA, Longitude=NA)
-sites[1,2:3] <- c(-17.47659, -149.8377) #LTER 0
-sites[2,2:3] <- c(-17.47659, -149.8377) #LTER 1, and so on.
-sites[3,2:3] <- c((-17.46576169 + -17.48131958)/2, (-149.8116849 + -149.7961685)/2)
-sites[4,2:3] <- c((-17.46576169 + -17.48131958)/2, (-149.8116849 + -149.7961685)/2)
-sites[5,2:3] <- c((-17.50382025 + -17.52087158)/2, (-149.7708619 + -149.7519968)/2)
-sites[6,2:3] <- c((-17.53305021 + -17.55064263)/2, (-149.7772857 + -149.7566866)/2)
-sites[7,2:3] <- c((-17.53305021 + -17.55064263)/2, (-149.7772857 + -149.7566866)/2)
-sites[8,2:3] <- c((-17.53305021 + -17.55064263)/2, (-149.7772857 + -149.7566866)/2)
-sites[9,2:3] <- c((-17.56818162 + -17.59182383)/2, (-149.8869755 + -149.8561009)/2)
-sites[10,2:3] <- c((-17.56818162 + -17.59182383)/2, (-149.8869755 + -149.8561009)/2)
-sites[11,2:3] <- c((-17.56818162 + -17.59182383)/2, (-149.8869755 + -149.8561009)/2)
-sites[12,2:3] <- c((-17.50735955 + -17.52839766)/2, (-149.934537 + -149.9115336)/2)
+sites[1,2:3] <- c((-17.47185366 + -17.48641792)/2, (-149.8455917 + -149.829821) /2) #LTER 0
+sites[2,2:3] <- c((-17.46576169 + -17.48131958)/2, (-149.8116849 + -149.7961685)/2)
+sites[3,2:3] <- c((-17.50382025 + -17.52087158)/2, (-149.7708619 + -149.7519968)/2)
+sites[4,2:3] <- c((-17.53305021 + -17.55064263)/2, (-149.7772857 + -149.7566866)/2)
+sites[5,2:3] <- c((-17.56818162 + -17.59182383)/2, (-149.8869755 + -149.8561009)/2)
+sites[6,2:3] <- c((-17.50735955 + -17.52839766)/2, (-149.934537 + -149.9115336)/2)
+
 
 dt <- left_join(dt, sites, by="Site")
 dt <- left_join(dt, depth, by="Habitat")
@@ -109,6 +103,7 @@ dt <- dt %>% filter(Length < 500) # remove those crazy length records
 
 # LAT LONG
 library(rnaturalearth)
+require(sf)
 proj = '+proj=eqearth +lon_0=160 +x_0=0 +y_0=0 +R=6371008.7714 +units=m +no_defs +type=crs'
 points <- st_as_sf(dt %>% distinct(Longitude, Latitude, Year), coords = c("Longitude", "Latitude"), crs = 4326)
 world <- ne_countries(scale = 'medium', returnclass = 'sf') %>% st_make_valid %>% 
@@ -145,6 +140,9 @@ dt[str_which(dt$Taxonomy, 'unidentified *'),] %>% unique() %>% View
 dt$Species <- dt$Taxonomy # make a copy
 dt$Species[str_which(dt$Species, 'idae\\sunidentified')]
 dt$Family[str_which(dt$Species, 'idae\\sunidentified')] <- word(dt$Species[str_which(dt$Species, 'idae\\sunidentified')], 1)
+dt$Family[str_which(dt$Species, 'Parrotfish|Scaridae|parrotfish')] <- 'Labridae'
+dt$Species <- str_replace(dt$Species, 'Parrotfish|Scaridae|parrotfish', 'Scarini')
+
 # put the families in their place!
 dt$Species[str_which(dt$Species, 'idae\\sunidentified')] <- str_replace(dt$Species[str_which(dt$Species, 'idae\\sunidentified')], 'unidentified\\s*', 'sp')
 dt <- dt %>% filter(!str_detect(dt$Species, '^Osteichthyes')) # remove the record that is too uncertain
@@ -153,20 +151,28 @@ dt[str_which(dt$Family, 'ormes'),] # check that family column doesn't have any m
 dt$Species <- str_replace(dt$Species, 'sp.\\s', 'sp')
 
 # check again
-sort(unique(dt$Species))
-dt %>% filter(str_detect(Species, '\\(cf')) %>% View
+dt  %>% distinct(Family, Species) %>% 
+  arrange(Family, Species) %>% View
+dt$Species <- str_remove(dt$Species, '(U|u)nidentified\\s')
+dt %>% filter(str_detect(Species, '\\d')) %>% distinct(Species) %>% View
+dt$Species <- str_replace(dt$Species, '\\s8$', '\\ssp8')
+dt %>% filter(str_detect(Species, '\\(cf')) %>% distinct(Species) %>% View
 # I'll just remove these cfs... 
 dt$Species <- str_remove(dt$Species, '\\s\\(cf\\)')
 
 dt$Genus <- word(dt$Species, 1) # migrate the first word in the species column to genus
 dt$Species <- word(dt$Species, start=2, end=-1)
 sort(unique(dt$Genus))
+dt$Genus[str_which(dt$Genus, 'idae$')] <- NA
 dt$Taxonomy <- NULL
 
 # Prepare raw data --------------------------------------------------------
+with(dt, paste(Site, Habitat, Transect, Year, Month, Day, sep = "_")) %>% n_distinct
+with(dt, paste(Site, Habitat, Transect, Year, Month, sep = "_")) %>% n_distinct
+with(dt, paste(Site, Habitat, Transect, Year, sep = "_")) %>% n_distinct # month and day matter
 
 dt_final <- dt %>% mutate(DataID = dataid,
-                          SamplingEventID = paste(Site, Habitat, Transect, year, month, day)) %>% # not including swath because the true sample is both swathes together
+                          SamplingEventID = paste(Site, Habitat, Transect, Year, Month, Day)) %>% # not including swath because the true sample is both swathes together
   select(Abundance, Length, Family, Genus, Species, SamplingEventID, 
            Latitude, Longitude, Depth, Day, Month, Year, DataID)
 
