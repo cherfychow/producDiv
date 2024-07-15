@@ -6,8 +6,7 @@
 require(iNEXT)
 require(dplyr)
 require(ggplot2)
-
-source('https://gist.githubusercontent.com/cherfychow/e9ae890fd16f4c86730748c067feee2b/raw/b2db138ab8164c237129308ea643de78cd54b252/cherulean.R')
+require(beepr)
 
 # requires 01_gridding for the data source
 # iter should also be an inherited parameter
@@ -62,11 +61,14 @@ for (i in 1:iter) { # up to iteration 5 for now
 beep()
 rm(abund, temp, na, rare_id, R)
 str(S_asy)
+summary(S_asy)
 dt_div <- bind_rows(dt_div, S_asy[-6]) # join up with species richness
 tail(dt_div)
 rm(S_asy)
 
 # visualise
+source('https://gist.githubusercontent.com/cherfychow/e9ae890fd16f4c86730748c067feee2b/raw/b2db138ab8164c237129308ea643de78cd54b252/cherulean.R')
+
 f_div <- ggplot(data = dt_div) +
     geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
         alpha = 0.2) +

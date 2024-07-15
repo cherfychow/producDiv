@@ -30,7 +30,7 @@ View(dt_assemblage)
 
 # make a column to help with identifying uncertain records
 dt_assemblage <- dt_assemblage %>% 
-    mutate(taxon_resolution = case_when(str_detect(Species, 'sp\\d*$') & is.na(Family) == F ~ 'genus', 
+    mutate(taxon_resolution = case_when(str_detect(Species, 'sp\\d*$') & is.na(Genus) == F ~ 'genus', 
                                         is.na(Family) == F & is.na(Genus) ~ 'family',
                                         str_detect(Species, 'sp\\d*$') == F ~ 'species',
                                         str_detect(Genus, 'Scari(ni|nae)') ~ 'family'))
@@ -42,19 +42,33 @@ sp <- dt_assemblage %>% filter(taxon_resolution == 'species') %>%
     pull(temp)
 
 dt_spcheck <- validate_names(sp) # check against FishBase
+View(dt_spcheck)
 dt_spcheck <- tibble(input = sp, validated = dt_spcheck)
 dt_spcheck %>% filter(is.na(validated)) %>% View
+dt_spcheck <- dt_spcheck %>% filter(validated != input)
+replace = dt_spcheck$validated
+names(replace) <- dt_spcheck$input
 
 # misspelling replace
 dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')] <- str_replace(dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')], 'nigros', 'nigrofuscus')
-dt_assemblage <- filter(dt_assemblage, Species != 'Teleostei unidentified') # omit
+dt_assemblage$genus_sp <- with(dt_assemblage, paste(Genus, Species, sep = ' ')) %>%
+    str_replace_all(., replace)
+dt_assemblage %>% filter(str_detect(genus_sp, '^NA')) %>% distinct %>% View
+dt_assemblage$genus_sp[which(dt_assemblage$taxon_resolution == 'family')] <- with(dt_assemblage[which(dt_assemblage$taxon_resolution == 'family'), ], 
+    paste(Family, Species, sep = ' '))
+unique(dt_assemblage$genus_sp)
 
 dt_assemblage %>% distinct(Family, Genus, Species) %>%
-    arrange(Family, Genus, Species)%>% View
+    arrange(Family, Genus, Species )%>% View
 dt_assemblage %>% distinct(Genus, Species) %>% 
     filter(str_detect(Genus, 'idae'))
 
-rm(sp, dt_spcheck)
+dt_assemblage %>% filter(is.na(Family)) %>% distinct(Family, genus_sp)
+dt_assemblage$Family[which(is.na(dt_assemblage$Family) & dt_assemblage$genus_sp == 'Azurina lepidolepis')] <- 'Pomacentridae'
+dt_assemblage$Family[which(is.na(dt_assemblage$Family) & dt_assemblage$genus_sp == 'Macropharyngodon sp')] <- 'Labridae'
+dt_assemblage <- filter(dt_assemblage, genus_sp != 'Teleostei unidentified') # omit
+
+rm(sp, dt_spcheck, replace)
 
 # GRID DATA -------------------------------------------------------
 # not all datasets use permanent locations
