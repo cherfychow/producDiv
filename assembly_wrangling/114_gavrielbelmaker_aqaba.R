@@ -15,10 +15,10 @@ require(lubridate)
 
 rm(list=ls())
 
-# Maarten already did formatting so this is just a cursory check for formatting etc.
+# already did formatting so this is just a cursory check for formatting etc.
 
 # make sure your working directory is set before running these lines
-dt <- read_excel('data_originals/114_GavrielBelmaker_Aqaba_obs.xlsx', sheet = 2)
+dt <- read_excel('data_originals/114_gavrielbelmaker_aqaba/114_GavrielBelmaker_Aqaba_obs.xlsx', sheet = 2)
 
 # Structure organisation + check --------------------------------------------------
 
