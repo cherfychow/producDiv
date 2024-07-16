@@ -84,6 +84,10 @@ dt <- dt %>% select(NUMBER, Length, `NAME-FISHBASE`, STATION, Reef, TRANSECT, La
 
 # Primary field check -----------------------------------------------------
 
+# standardise small cryptic fish to density to match large
+dt <- mutate(dt, Abundance = case_when(Length < 20 ~ Abundance * 2,
+  .default = Abundance * 1))
+
 # ABUNDANCES
 # No negative values, zeroes, or NAs in abundance/biomass fields.
 sum(is.na(dt$Abundance)+0)

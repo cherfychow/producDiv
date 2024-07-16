@@ -86,6 +86,8 @@ summary(dt)
 
 # Primary field check -----------------------------------------------------
 
+# transform to density first
+dt <- mutate(dt, Abundance = case_when(Swath == 1 ~ Abundance * 5, .default = Abundance * 1))
 # ABUNDANCES
 # No negative values, zeroes, or NAs in abundance/biomass fields.
 dt %>% filter(is.na(Length))
@@ -172,7 +174,7 @@ with(dt, paste(Site, Habitat, Transect, Year, Month, sep = "_")) %>% n_distinct
 with(dt, paste(Site, Habitat, Transect, Year, sep = "_")) %>% n_distinct # month and day matter
 
 dt_final <- dt %>% mutate(DataID = dataid,
-                          SamplingEventID = paste(Site, Habitat, Transect, Year, Month, Day)) %>% # not including swath because the true sample is both swathes together
+                          SamplingEventID = paste(Site, Habitat, Transect, Year, Month, Day, sep = "_")) %>% # not including swath because the true sample is both swathes together
   select(Abundance, Length, Family, Genus, Species, SamplingEventID, 
            Latitude, Longitude, Depth, Day, Month, Year, DataID)
 
