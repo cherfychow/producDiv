@@ -92,7 +92,7 @@ summary(dt$Abundance)
 summary(dt$Length) # range seems reasonable
 dt %>% filter(Length > 100) %>% View # yep, all sharks and megafauna species
 # wild Stegastes fuscus record
-dt <- dt[-which(dt$Species == 'Stegastes fuscus' & dt$Length == 120),]
+dt <- dt[-which(dt$Species == 'Stegastes fuscus' & dt$Length == 120),] # delete this record
 
 summary(dt$year)
 
