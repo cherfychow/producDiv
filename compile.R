@@ -100,7 +100,6 @@ allPD <- ggplot() +
   theme_minimal() + guides(fill = 'none') +
   scale_fill_viridis_c(option = 'C')
 
-ggsave(allPD, filename = "datamap_june.png", device = 'png', dpi = 300, width = 210, height = 150, units = "mm")
+# ggsave(allPD, filename = "datamap_june.png", device = 'png', dpi = 300, width = 210, height = 150, units = "mm")
 # need to examine this better visually without rarefying at this stage
-require(plotly)
-ggplotly(allPD)
+plotly::ggplotly(allPD)
