@@ -3,6 +3,7 @@
 # Calculate productivity
 
 require(dplyr)
+require(readr)
 require(stringr)
 require(sf)
 require(rfishprod)
@@ -10,7 +11,7 @@ require(rfishbase)
 
 
 # Compile traits ==========================================================
-# load("/Users/cherchow/Dropbox/ch4_producDiv/datarepo/workspace.RData")
+# load("workspace.RData")
 
 dt_prodDB <- rfishprod::db
 
@@ -63,8 +64,25 @@ fishbase_traits <- position %>% group_by(Species) %>% summarise(Habitat = paste(
   full_join(fishbase_traits, ., by = "Species")
 fishbase_traits$Genus <- word(fishbase_traits$Species, 1)
 rm(position)  
-
 fishbase_traits <- select(fishbase_traits, !(Length:LTypeMaxF)) %>% relocate(Genus, .before = Species)
+
+# Vertical position traits from GASPAR
+gaspar <- read_csv('src/gaspar_traits.csv')
+unique(dt_prodDB$Position)
+replace <- c('Bnth', 'BtPl', 'Pelg')
+names(replace) <- c('Bottom', 'Low', 'High')
+gaspar$Position_v <- str_replace_all(gaspar$Level_water, replace)
+fishbase_traits <- gaspar %>% select(FullSpecies, Position_v) %>% 
+  right_join(., fishbase_traits, by = c("FullSpecies" = 'Species'))
+
+# use the two to get vertical and horizontal position traits
+fishbase_traits <- mutate(fishbase_traits, Position_h = case_when(
+  # associated if it's not exclusively coral reefs
+    str_detect(Habitat, 'seagrass|Seagrass') ~ 'As', .default = "Dw"
+  )) %>% mutate(Position = paste0(Position_v, Position_h)) %>%
+  select(Species, MaxLengthTL, Position, a, b) %>%
+  rename(MaxSizeTL = MaxLengthTL)
+
 
 ## Merge trophic guilds ==========================================================
 
@@ -102,6 +120,7 @@ dt_prodDB %>% group_by(Diet) %>% summarise(n())
 length(dt_prodDB_sp_troph)
 dt_prodDB_sp_troph <- fooditems(species_list = dt_prodDB_sp_troph)
 View(dt_prodDB_sp_troph)
+rm(db_sp_troph)
 
 # have to do it manually off-code
 # readr::write_csv(dt_prodDB_sp_troph, 'src/missing_troph_sp.csv')
