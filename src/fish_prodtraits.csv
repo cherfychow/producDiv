@@ -1,0 +1,515 @@
+Genus,Species,DemersPelag,MaxLengthTL,a,b,Habitat,Diet_Par
+Abudefduf,Abudefduf septemfasciatus,reef-associated,23,0.021877599880099297,3.0799999237060547,CoralReefs,Plank
+Abudefduf,Abudefduf sexfasciatus,reef-associated,19,0.021877599880099297,3.0999999046325684,"SeaGrassBeds, CoralReefs",Plank
+Abudefduf,Abudefduf sordidus,reef-associated,24,0.024547100067138672,3.109999895095825,CoralReefs,InvMic
+Abudefduf,Abudefduf vaigiensis,reef-associated,20,0.024547100067138672,3.069999933242798,"SeaGrassBeds, CoralReefs",Plank
+Abudefduf,Abudefduf whitleyi,reef-associated,17.079999923706055,0.02137959934771061,3.0899999141693115,CoralReefs,Plank
+Acanthochromis,Acanthochromis polyacanthus,reef-associated,14,0.032359398901462555,3.049999952316284,"CoralReefs, Lagoons",Plank
+Acanthurus,Acanthurus achilles,reef-associated,24,0.02290870063006878,2.9600000381469727,CoralReefs,Herb
+Acanthurus,Acanthurus auranticavus,reef-associated,54.900001525878906,0.02290870063006878,2.9600000381469727,"SeaGrassBeds, CoralReefs",Herb
+Acanthurus,Acanthurus bariene,reef-associated,50,0.02290870063006878,2.9600000381469727,NA,Herb
+Acanthurus,Acanthurus blochii,reef-associated,54.900001525878906,0.02041739970445633,3,CoralReefs,Herb
+Acanthurus,Acanthurus dussumieri,reef-associated,54,0.02951209992170334,2.940000057220459,"SeaGrassBeds, CoralReefs",Herb
+Aluterus,Aluterus scriptus,reef-associated,110,0.019952600821852684,2.930000066757202,"SeaGrassBeds, CoralReefs, DropOffs, Lagoons",Cor
+Amanses,Amanses scopas,reef-associated,20,0.019952600821852684,2.930000066757202,"SeaGrassBeds, CoralReefs",Cor
+Acanthurus,Acanthurus guttatus,reef-associated,26,0.032359398901462555,2.950000047683716,CoralReefs,Herb
+Acanthurus,Acanthurus lineatus,reef-associated,38,0.022387199103832245,2.9600000381469727,CoralReefs,Herb
+Acanthurus,Acanthurus mata,reef-associated,50,0.026302700862288475,2.940000057220459,"SeaGrassBeds, CoralReefs",Herb
+Acanthurus,Acanthurus nigricans,reef-associated,39.959999084472656,0.022387199103832245,2.950000047683716,"CoralReefs, ReefFlats, Lagoons",Herb
+Acanthurus,Acanthurus nigricauda,reef-associated,50.279998779296875,0.02290870063006878,2.9600000381469727,"SeaGrassBeds, CoralReefs, Lagoons",Herb
+Acanthurus,Acanthurus nigrofuscus,reef-associated,21,0.024547100067138672,2.9700000286102295,"Macrophyte, SeaGrassBeds, CoralReefs",Herb
+Acanthurus,Acanthurus olivaceus,reef-associated,35,0.025704000145196915,3.009999990463257,CoralReefs,Herb
+Acanthurus,Acanthurus pyroferus,reef-associated,29,0.02290870063006878,2.9600000381469727,CoralReefs,Herb
+Acanthurus,Acanthurus thompsoni,reef-associated,27,0.02290870063006878,2.9600000381469727,"SeaGrassBeds, CoralReefs",Plank
+Acanthurus,Acanthurus triostegus,reef-associated,27,0.023988299071788788,2.9600000381469727,"Macrophyte, CoralReefs, Lagoons",Herb
+Acanthurus,Acanthurus xanthopterus,reef-associated,70,0.02137959934771061,2.990000009536743,"CoralReefs, DropOffs, Lagoons",Herb
+Aetobatus,Aetobatus ocellatus,benthopelagic,143.91000366210938,0.009999999776482582,3.0399999618530273,NA,NA
+Amblycirrhitus,Amblycirrhitus bimacula,reef-associated,10.369999885559082,0.014454400166869164,3.069999933242798,CoralReefs,Crus
+Amblyeleotris,Amblyeleotris fasciata,reef-associated,8,0.006918310187757015,3.0999999046325684,CoralReefs,InvMic
+Amblyglyphidodon,Amblyglyphidodon aureus,reef-associated,13,0.023442300036549568,2.9800000190734863,"CoralReefs, Lagoons",Plank
+Amblyglyphidodon,Amblyglyphidodon curacao,reef-associated,11,0.02951209992170334,3,"CoralReefs, Lagoons",Plank
+Amblyglyphidodon,Amblyglyphidodon leucogaster,reef-associated,13,0.019952600821852684,2.9600000381469727,CoralReefs,Plank
+Amblygobius,Amblygobius nocturnus,reef-associated,12.199999809265137,0.010232900269329548,3.0199999809265137,CoralReefs,InvMic
+Amblygobius,Amblygobius phalaena,reef-associated,15,0.007762469816952944,3.0399999618530273,SeaGrassBeds,InvMic
+Amblypomacentrus,Amblypomacentrus breviceps,reef-associated,8.5,0.014454400166869164,3,"CoralReefs, Lagoons",Plank
+Amphiprion,Amphiprion akindynos,reef-associated,10.979999542236328,0.023988299071788788,2.9600000381469727,CoralReefs,Plank
+Amphiprion,Amphiprion biaculeatus,reef-associated,17,0.028183799237012863,3,CoralReefs,NA
+Amphiprion,Amphiprion chrysopterus,reef-associated,17,0.023442300036549568,2.9800000190734863,CoralReefs,Plank
+Amphiprion,Amphiprion clarkii,reef-associated,18.299999237060547,0.023442300036549568,2.9800000190734863,CoralReefs,Plank
+Anampses,Anampses caeruleopunctatus,reef-associated,42,0.009772369638085365,3.069999933242798,"SeaGrassBeds, CoralReefs",InvMic
+Anampses,Anampses femininus,reef-associated,24,0.009772369638085365,3.069999933242798,NA,InvMic
+Anampses,Anampses melanurus,reef-associated,12,0.009772369638085365,3.069999933242798,CoralReefs,InvMic
+Anampses,Anampses meleagrides,reef-associated,22,0.009772369638085365,3.069999933242798,CoralReefs,InvMic
+Anampses,Anampses neoguinaicus,reef-associated,24.399999618530273,0.009772369638085365,3.069999933242798,CoralReefs,InvMic
+Anampses,Anampses twistii,reef-associated,18,0.009772369638085365,3.069999933242798,CoralReefs,InvMic
+Aphareus,Aphareus furca,reef-associated,70,0.01698240078985691,2.950000047683716,CoralReefs,Pisc
+Aprion,Aprion virescens,reef-associated,112,0.014125400222837925,2.950000047683716,CoralReefs,Pisc
+Arothron,Arothron caeruleopunctatus,reef-associated,80,0.03715350106358528,2.859999895095825,NA,InvMac
+Arothron,Arothron hispidus,reef-associated,50,0.039810698479413986,2.819999933242798,"SeaGrassBeds, CoralReefs",InvMac
+Arothron,Arothron meleagris,reef-associated,50,0.03715350106358528,2.859999895095825,"SeaGrassBeds, CoralReefs",Cor
+Arothron,Arothron nigropunctatus,reef-associated,33,0.03715350106358528,2.859999895095825,"SeaGrassBeds, CoralReefs",Cor
+Arothron,Arothron stellatus,reef-associated,120,0.04897790029644966,2.859999895095825,"SeaGrassBeds, CoralReefs",InvMac
+Aspidontus,Aspidontus dussumieri,reef-associated,12,0.005623409990221262,3.059999942779541,CoralReefs,Plank
+Aspidontus,Aspidontus taeniatus,reef-associated,11.5,0.005623409990221262,3.059999942779541,CoralReefs,Plank
+Asterropteryx,Asterropteryx ensifera,reef-associated,3.6600000858306885,0.006918310187757015,3.0999999046325684,CoralReefs,NA
+Asterropteryx,Asterropteryx semipunctata,reef-associated,6.5,0.009772369638085365,3.1700000762939453,CoralReefs,Herb
+Asterropteryx,Asterropteryx striata,reef-associated,2.8299999237060547,0.006918310187757015,3.0999999046325684,CoralReefs,NA
+Balistapus,Balistapus undulatus,reef-associated,30,0.028183799237012863,2.940000057220459,"SeaGrassBeds, CoralReefs",InvMac
+Atrosalarias,Atrosalarias fuscus,reef-associated,14.5,0.008709640242159367,3.0399999618530273,CoralReefs,Herb
+Aulostomus,Aulostomus chinensis,reef-associated,80,5.888440064154565e-4,3.25,"SeaGrassBeds, CoralReefs",NA
+Azurina,Azurina cyanea,reef-associated,15,0.01258930005133152,3.0299999713897705,CoralReefs,NA
+Azurina,Azurina lepidolepis,reef-associated,9,0.01258930005133152,3.0299999713897705,CoralReefs,NA
+Balistoides,Balistoides viridescens,reef-associated,75,0.03311309963464737,2.9700000286102295,"SeaGrassBeds, CoralReefs",InvMac
+Blenniella,Blenniella chrysospilos,reef-associated,15.859999656677246,0.0074130999855697155,3.0199999809265137,CoralReefs,Herb
+Blenniella,Blenniella paula,reef-associated,15.979999542236328,0.0074130999855697155,3.0199999809265137,CoralReefs,Herb
+Bodianus,Bodianus axillaris,reef-associated,24.399999618530273,0.012022599577903748,3.049999952316284,CoralReefs,InvMac
+Bodianus,Bodianus mesothorax,reef-associated,25,0.012022599577903748,3.049999952316284,CoralReefs,InvMac
+Bothus,Bothus mancus,reef-associated,27.780000686645508,0.010471300221979618,3.0399999618530273,"SeaGrassBeds, CoralReefs",Pisc
+Bothus,Bothus pantherinus,reef-associated,39,0.008709640242159367,3.109999895095825,"SeaGrassBeds, CoralReefs",Pisc
+Bryaninops,Bryaninops tigris,reef-associated,2.990000009536743,0.006918310187757015,3.0999999046325684,CoralReefs,NA
+Caesio,Caesio caerulaurea,reef-associated,50.38999938964844,0.015135600231587887,3.0399999618530273,"SeaGrassBeds, CoralReefs",NA
+Caesio,Caesio cuning,reef-associated,60,0.016218099743127823,3.069999933242798,CoralReefs,NA
+Caesio,Caesio lunaris,reef-associated,40,0.01698240078985691,3.0899999141693115,"SeaGrassBeds, CoralReefs",NA
+Caesio,Caesio teres,reef-associated,40,0.012022599577903748,3.0899999141693115,"SeaGrassBeds, CoralReefs",NA
+Callionymus,Callionymus filamentosus,demersal,20,0.01122019998729229,2.7699999809265137,SeaGrassBeds,NA
+Calotomus,Calotomus carolinus,reef-associated,54,0.01258930005133152,3.109999895095825,"Macrophyte, SeaGrassBeds, CoralReefs",Herb
+Cantherhines,Cantherhines dumerilii,reef-associated,38,0.023988299071788788,2.930000066757202,CoralReefs,Cor
+Cantherhines,Cantherhines pardalis,reef-associated,25,0.016218099743127823,2.930000066757202,CoralReefs,InvSes
+Cantherhines,Cantherhines sandwichiensis,reef-associated,19.299999237060547,0.019952600821852684,2.930000066757202,CoralReefs,InvSes
+Canthidermis,Canthidermis maculata,reef-associated,50,0.025704000145196915,2.930000066757202,CoralReefs,Plank
+Canthigaster,Canthigaster amboinensis,reef-associated,15,0.03630780056118965,2.880000114440918,CoralReefs,InvSes
+Canthigaster,Canthigaster bennetti,reef-associated,10,0.03630780056118965,2.880000114440918,"SeaGrassBeds, CoralReefs",InvSes
+Canthigaster,Canthigaster janthinoptera,reef-associated,9,0.03630780056118965,2.880000114440918,"SeaGrassBeds, CoralReefs",InvSes
+Canthigaster,Canthigaster papua,reef-associated,12.199999809265137,0.040738001465797424,2.880000114440918,NA,Herb
+Canthigaster,Canthigaster solandri,reef-associated,12.100000381469727,0.030903000384569168,2.8399999141693115,"SeaGrassBeds, CoralReefs",Herb
+Canthigaster,Canthigaster valentini,reef-associated,11,0.03311309963464737,2.8399999141693115,"SeaGrassBeds, CoralReefs",InvSes
+Caracanthus,Caracanthus maculatus,reef-associated,5,0.019952600821852684,3.009999990463257,CoralReefs,Crus
+Caracanthus,Caracanthus unipinna,reef-associated,5,0.019952600821852684,3.009999990463257,CoralReefs,Crus
+Carangoides,Carangoides ferdau,reef-associated,70,0.019952600821852684,2.950000047683716,"SeaGrassBeds, CoralReefs",Pisc
+Carangoides,Carangoides plagiotaenia,reef-associated,50,0.01698240078985691,2.950000047683716,CoralReefs,Pisc
+Caranx,Caranx lugubris,benthopelagic,100,0.01819700002670288,2.950000047683716,"CoralReefs, DropOffs",Pisc
+Caranx,Caranx melampygus,reef-associated,129.8699951171875,0.017782799899578094,2.950000047683716,CoralReefs,Pisc
+Carcharhinus,Carcharhinus amblyrhynchos,reef-associated,255,0.005128609947860241,3.119999885559082,CoralReefs,NA
+Carcharhinus,Carcharhinus melanopterus,reef-associated,200,0.004677350167185068,3.0299999713897705,CoralReefs,NA
+Cetoscarus,Cetoscarus bicolor,reef-associated,61,0.012022599577903748,3.0199999809265137,CoralReefs,Herb
+Centropyge,Centropyge bicolor,reef-associated,15,0.032359398901462555,2.890000104904175,CoralReefs,InvSes
+Centropyge,Centropyge bispinosa,reef-associated,10,0.034673698246479034,2.740000009536743,CoralReefs,InvSes
+Centropyge,Centropyge flavissima,reef-associated,14,0.034673698246479034,2.930000066757202,CoralReefs,InvSes
+Centropyge,Centropyge heraldi,reef-associated,12,0.032359398901462555,2.890000104904175,CoralReefs,InvSes
+Centropyge,Centropyge vrolikii,reef-associated,12,0.032359398901462555,2.890000104904175,CoralReefs,InvSes
+Cephalopholis,Cephalopholis argus,reef-associated,60,0.012022599577903748,3.049999952316284,"SeaGrassBeds, CoralReefs, Crevices",Pisc
+Cephalopholis,Cephalopholis cyanostigma,reef-associated,40,0.013489600270986557,3.0199999809265137,"SeaGrassBeds, CoralReefs",Pisc
+Cephalopholis,Cephalopholis microprion,reef-associated,25,0.01698240078985691,3.0999999046325684,CoralReefs,Crus
+Cephalopholis,Cephalopholis miniata,reef-associated,50,0.010715199634432793,3.059999942779541,CoralReefs,Pisc
+Cephalopholis,Cephalopholis sexmaculata,reef-associated,50,0.01258930005133152,3.0399999618530273,"CoralReefs, DropOffs",Pisc
+Cephalopholis,Cephalopholis urodeta,reef-associated,28,0.0123027004301548,3.0399999618530273,CoralReefs,Crus
+Cetoscarus,Cetoscarus ocellatus,reef-associated,97.5999984741211,0.014791100285947323,3.0199999809265137,NA,Herb
+Chaetodon,Chaetodon aureofasciatus,reef-associated,12.5,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon auriga,reef-associated,23,0.025704000145196915,2.9800000190734863,"SeaGrassBeds, CoralReefs",Cor
+Chaetodon,Chaetodon baronessa,reef-associated,16,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon bennetti,reef-associated,20,0.022387199103832245,2.9800000190734863,CoralReefs,Cor
+Chaetodon,Chaetodon citrinellus,reef-associated,13,0.02290870063006878,2.950000047683716,CoralReefs,Cor
+Chaetodon,Chaetodon ephippium,reef-associated,30,0.02290870063006878,3.0199999809265137,CoralReefs,Cor
+Chaetodon,Chaetodon kleinii,reef-associated,15,0.030903000384569168,3.0399999618530273,"SeaGrassBeds, CoralReefs",Plank
+Chaetodon,Chaetodon lineolatus,reef-associated,30,0.023442300036549568,2.940000057220459,CoralReefs,Cor
+Chaetodon,Chaetodon lunula,reef-associated,20,0.023442300036549568,3,CoralReefs,InvMic
+Chaetodon,Chaetodon lunulatus,reef-associated,26.700000762939453,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon melannotus,reef-associated,18,0.023442300036549568,3,"SeaGrassBeds, CoralReefs",Cor
+Chaetodon,Chaetodon mertensii,reef-associated,12.5,0.022387199103832245,3.240000009536743,CoralReefs,Cor
+Chaetodon,Chaetodon ornatissimus,reef-associated,20,0.026302700862288475,3.0199999809265137,"CoralReefs, DropOffs, Lagoons",Cor
+Chaetodon,Chaetodon oxycephalus,reef-associated,25,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon pelewensis,reef-associated,12.5,0.02137959934771061,3.0199999809265137,CoralReefs,Cor
+Chaetodon,Chaetodon plebeius,reef-associated,15,0.02511890046298504,2.859999895095825,CoralReefs,Cor
+Chaetodon,Chaetodon quadrimaculatus,reef-associated,16,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon rafflesii,reef-associated,18,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon rainfordi,reef-associated,15,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon reticulatus,reef-associated,18,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon semeion,reef-associated,26,0.023442300036549568,3,CoralReefs,Cor
+Chaetodon,Chaetodon speculum,reef-associated,18,0.025704000145196915,2.9700000286102295,CoralReefs,Cor
+Chaetodon,Chaetodon trichrous,reef-associated,12,0.023442300036549568,3,NA,Plank
+Chaetodon,Chaetodon trifascialis,reef-associated,18,0.02137959934771061,2.950000047683716,CoralReefs,Cor
+Chaetodon,Chaetodon trifasciatus,reef-associated,15,0.023442300036549568,3.059999942779541,"SeaGrassBeds, CoralReefs",Cor
+Chaetodon,Chaetodon ulietensis,reef-associated,15,0.022387199103832245,2.9800000190734863,CoralReefs,Cor
+Chaetodon,Chaetodon unimaculatus,reef-associated,20,0.028183799237012863,3,CoralReefs,Cor
+Chaetodon,Chaetodon vagabundus,reef-associated,23,0.019952600821852684,2.9800000190734863,CoralReefs,Cor
+Chanos,Chanos chanos,benthopelagic,219.60000610351562,0.008511380292475224,3.059999942779541,CoralReefs,NA
+Cheilinus,Cheilinus chlorourus,reef-associated,45,0.01819700002670288,2.940000057220459,"SeaGrassBeds, CoralReefs",Crus
+Cheilinus,Cheilinus fasciatus,reef-associated,48.79999923706055,0.016218099743127823,2.950000047683716,"CoralReefs, Lagoons",Crus
+Cheilinus,Cheilinus oxycephalus,reef-associated,17,0.016218099743127823,2.950000047683716,"SeaGrassBeds, CoralReefs",Crus
+Cheilinus,Cheilinus trilobatus,reef-associated,45,0.022387199103832245,2.950000047683716,"SeaGrassBeds, CoralReefs",InvMac
+Cheilinus,Cheilinus undulatus,reef-associated,279.3800048828125,0.015135600231587887,2.9700000286102295,"SeaGrassBeds, CoralReefs, DropOffs",InvMac
+Cheilio,Cheilio inermis,reef-associated,61,0.0041686901822686195,3.0899999141693115,"SeaGrassBeds, CoralReefs",Pisc
+Cheilodipterus,Cheilodipterus artus,reef-associated,22.809999465942383,0.01288249995559454,3.1500000953674316,CoralReefs,Crus
+Cheilodipterus,Cheilodipterus intermedius,reef-associated,24.399999618530273,0.005495409946888685,3.2699999809265137,CoralReefs,Crus
+Cheilodipterus,Cheilodipterus macrodon,reef-associated,25,0.011749000288546085,3.180000066757202,"SeaGrassBeds, CoralReefs",Crus
+Cheilodipterus,Cheilodipterus quinquelineatus,reef-associated,13,0.009772369638085365,3.059999942779541,"SeaGrassBeds, CoralReefs",Crus
+Chrysiptera,Chrysiptera rollandi,reef-associated,7.5,0.014454400166869164,3,CoralReefs,Plank
+Chlorurus,Chlorurus frontalis,reef-associated,50,0.011749000288546085,3.0899999141693115,CoralReefs,Herb
+Chlorurus,Chlorurus microrhinos,reef-associated,70,0.014454400166869164,3.0299999713897705,CoralReefs,Herb
+Chlorurus,Chlorurus spilurus,reef-associated,53.95000076293945,0.01258930005133152,3.0299999713897705,NA,Herb
+Choerodon,Choerodon fasciatus,reef-associated,30,0.01288249995559454,3.049999952316284,CoralReefs,InvMac
+Choerodon,Choerodon graphicus,reef-associated,51.5,0.01698240078985691,3.0299999713897705,CoralReefs,InvMac
+Choerodon,Choerodon schoenleinii,reef-associated,100,0.01288249995559454,3.049999952316284,CoralReefs,InvMac
+Chromis,Chromis atripectoralis,reef-associated,12,0.02137959934771061,3.0799999237060547,"CoralReefs, DropOffs, Lagoons",Plank
+Chromis,Chromis ternatensis,reef-associated,10.5,0.02290870063006878,3.0399999618530273,CoralReefs,Plank
+Chromis,Chromis viridis,reef-associated,10,0.02041739970445633,2.9000000953674316,CoralReefs,Plank
+Chromis,Chromis weberi,reef-associated,13.5,0.01258930005133152,3.0299999713897705,CoralReefs,Plank
+Chromis,Chromis xanthura,reef-associated,17,0.014454400166869164,2.940000057220459,CoralReefs,Plank
+Chrysiptera,Chrysiptera brownriggii,reef-associated,8,0.014454400166869164,3,CoralReefs,Herb
+Chrysiptera,Chrysiptera caesifrons,pelagic-neritic,5.920000076293945,0.023442300036549568,2.9800000190734863,NA,NA
+Chrysiptera,Chrysiptera cyanea,reef-associated,8.5,0.014454400166869164,3,CoralReefs,Plank
+Chrysiptera,Chrysiptera flavipinnis,reef-associated,8,0.014454400166869164,3,CoralReefs,Plank
+Chrysiptera,Chrysiptera glauca,reef-associated,11.5,0.014454400166869164,3,CoralReefs,Herb
+Cirrhilabrus,Cirrhilabrus exquisitus,reef-associated,14.640000343322754,0.016218099743127823,2.950000047683716,CoralReefs,Plank
+Cirrhilabrus,Cirrhilabrus punctatus,reef-associated,13,0.016218099743127823,2.950000047683716,NA,Plank
+Cirrhilabrus,Cirrhilabrus scottorum,reef-associated,13,0.016218099743127823,2.950000047683716,CoralReefs,Plank
+Cirrhitichthys,Cirrhitichthys falco,reef-associated,7,0.011749000288546085,3.0399999618530273,CoralReefs,InvMic
+Cirrhitichthys,Cirrhitichthys oxycephalus,reef-associated,10,0.0123027004301548,3.130000114440918,CoralReefs,Crus
+Cirripectes,Cirripectes castaneus,reef-associated,11.220000267028809,0.0074130999855697155,3.0199999809265137,"Macrophyte, CoralReefs, ReefFlats, HardCorals",Herb
+Cirripectes,Cirripectes stigmaticus,reef-associated,12.199999809265137,0.009999999776482582,3.0199999809265137,"Macrophyte, CoralReefs, HardCorals",Herb
+Cirripectes,Cirripectes variolosus,reef-associated,10.859999656677246,0.010471300221979618,3.0199999809265137,CoralReefs,Herb
+Corythoichthys,Corythoichthys flavofasciatus,reef-associated,12,3.63077997462824e-4,3.180000066757202,"BedsRock, SeaGrassBeds, CoralReefs, Lagoons",Plank
+Coris,Coris aygula,reef-associated,120,0.008128300309181213,3.130000114440918,CoralReefs,InvMac
+Coris,Coris batuensis,reef-associated,17,0.009772369638085365,3.069999933242798,CoralReefs,InvMic
+Coris,Coris gaimard,reef-associated,40,0.009772369638085365,3.069999933242798,CoralReefs,InvMac
+Ctenochaetus,Ctenochaetus binotatus,reef-associated,22,0.03311309963464737,2.930000066757202,CoralReefs,Herb
+Ctenochaetus,Ctenochaetus flavicauda,reef-associated,16,0.023442300036549568,2.9600000381469727,NA,Herb
+Ctenochaetus,Ctenochaetus striatus,reef-associated,26,0.023442300036549568,2.9700000286102295,"SeaGrassBeds, CoralReefs",Herb
+Ctenogobiops,Ctenogobiops feroculus,reef-associated,9.760000228881836,0.006918310187757015,3.0999999046325684,CoralReefs,InvMic
+Cypselurus,Cypselurus simus,pelagic-neritic,31.719999313354492,0.004265789873898029,3.119999885559082,NA,NA
+Dascyllus,Dascyllus aruanus,reef-associated,10,0.022387199103832245,2.950000047683716,"SeaGrassBeds, CoralReefs",Plank
+Dascyllus,Dascyllus flavicaudus,reef-associated,12,0.020893000066280365,2.9800000190734863,NA,Plank
+Dascyllus,Dascyllus reticulatus,reef-associated,9,0.02951209992170334,2.990000009536743,CoralReefs,Plank
+Dascyllus,Dascyllus trimaculatus,reef-associated,14,0.034673698246479034,2.930000066757202,"SeaGrassBeds, CoralReefs",Plank
+Dendrochirus,Dendrochirus biocellatus,reef-associated,13,0.010232900269329548,3.009999990463257,NA,Crus
+Diagramma,Diagramma labiosum,benthopelagic,90,0.019498400390148163,2.950000047683716,NA,InvMac
+Diodon,Diodon hystrix,reef-associated,91,0.08709640055894852,2.7699999809265137,"SeaGrassBeds, CoralReefs, Lagoons, Crevices",InvMac
+Diplogrammus,Diplogrammus goramensis,reef-associated,10,0.007943280041217804,2.819999933242798,CoralReefs,NA
+Diploprion,Diploprion bifasciatum,reef-associated,25,0.017782799899578094,3.0399999618530273,"CoralReefs, Crevices",Crus
+Dischistodus,Dischistodus melanotus,reef-associated,16,0.028183799237012863,3.009999990463257,CoralReefs,Plank
+Dischistodus,Dischistodus perspicillatus,reef-associated,18,0.014454400166869164,3,"SeaGrassBeds, CoralReefs",Plank
+Dischistodus,Dischistodus prosopotaenia,reef-associated,18.5,0.014454400166869164,3,"SeaGrassBeds, CoralReefs",Plank
+Dischistodus,Dischistodus pseudochrysopoecilus,reef-associated,18,0.014454400166869164,3,CoralReefs,Plank
+Echeneis,Echeneis naucrates,reef-associated,110,0.0027542300522327423,3.1500000953674316,"SeaGrassBeds, CoralReefs",Pisc
+Echidna,Echidna nebulosa,reef-associated,100,3.388439945410937e-4,3.319999933242798,"CoralReefs, ReefFlats",Crus
+Ecsenius,Ecsenius australianus,reef-associated,6,0.0074130999855697155,3.0199999809265137,CoralReefs,Herb
+Ecsenius,Ecsenius bicolor,reef-associated,11,0.007943280041217804,2.869999885559082,CoralReefs,Herb
+Ecsenius,Ecsenius mandibularis,reef-associated,7.5,0.0074130999855697155,3.0199999809265137,NA,Herb
+Ecsenius,Ecsenius stictus,reef-associated,5.800000190734863,0.0074130999855697155,3.0199999809265137,CoralReefs,Herb
+Enchelycore,Enchelycore pardalis,reef-associated,92,6.025600014254451e-4,3.299999952316284,CoralReefs,Crus
+Epibulus,Epibulus insidiator,reef-associated,65.87999725341797,0.021877599880099297,2.950000047683716,CoralReefs,Crus
+Epinephelus,Epinephelus fasciatus,reef-associated,40,0.01148150023072958,3.0399999618530273,CoralReefs,Crus
+Epinephelus,Epinephelus hexagonatus,reef-associated,27.5,0.009332540445029736,3,CoralReefs,Pisc
+Epinephelus,Epinephelus maculatus,reef-associated,60.5,0.010964799672365189,3,CoralReefs,Crus
+Epinephelus,Epinephelus merra,reef-associated,36.5,0.011749000288546085,3.0399999618530273,"SeaGrassBeds, CoralReefs, Lagoons",Crus
+Epinephelus,Epinephelus quoyanus,reef-associated,40,0.013489600270986557,3.049999952316284,CoralReefs,Crus
+Epinephelus,Epinephelus tauvina,reef-associated,100,0.012022599577903748,3.0399999618530273,CoralReefs,Pisc
+Exallias,Exallias brevis,reef-associated,14.5,0.019952600821852684,3.009999990463257,CoralReefs,Herb
+Eviota,Eviota infulata,reef-associated,3.049999952316284,0.010232900269329548,3.0199999809265137,NA,NA
+Fistularia,Fistularia commersonii,reef-associated,160,0.002137959934771061,2.950000047683716,"Macrophyte, SeaGrassBeds, CoralReefs",Pisc
+Forcipiger,Forcipiger flavissimus,reef-associated,22,0.022387199103832245,3.009999990463257,CoralReefs,InvMic
+Forcipiger,Forcipiger longirostris,reef-associated,22,0.02290870063006878,3.0199999809265137,CoralReefs,Crus
+Fusigobius,Fusigobius neophytus,reef-associated,7.5,0.010232900269329548,3.0199999809265137,CoralReefs,InvMic
+Gnathanodon,Gnathanodon speciosus,reef-associated,120,0.013489600270986557,2.950000047683716,"CoralReefs, ReefFlats, Lagoons",Pisc
+Gnathodentex,Gnathodentex aureolineatus,reef-associated,46.95000076293945,0.016218099743127823,3.009999990463257,"SeaGrassBeds, CoralReefs",InvMac
+Gnatholepis,Gnatholepis anjerensis,reef-associated,10.25,0.00954992976039648,3.049999952316284,"Macrophyte, SeaGrassBeds, CoralReefs",Plank
+Gnatholepis,Gnatholepis cauerensis,reef-associated,7.320000171661377,0.00954992976039648,3.049999952316284,CoralReefs,InvMic
+Gobiodon,Gobiodon quinquestrigatus,reef-associated,5.489999771118164,0.019952600821852684,3.009999990463257,"CoralReefs, ReefFlats, HardCorals",Plank
+Gymnothorax,Gymnothorax javanicus,reef-associated,300,5.248070228844881e-4,3.2699999809265137,"CoralReefs, ReefFlats, Lagoons",Pisc
+Gomphosus,Gomphosus varius,reef-associated,36.599998474121094,0.0063095698133111,2.9700000286102295,CoralReefs,Crus
+Grammistes,Grammistes sexlineatus,reef-associated,30,0.01122019998729229,3.0399999618530273,"SeaGrassBeds, CoralReefs",Crus
+Gunnellichthys,Gunnellichthys monostigma,reef-associated,18.299999237060547,0.0038904501125216484,3.119999885559082,NA,InvMic
+Gymnosarda,Gymnosarda unicolor,reef-associated,275.260009765625,0.010715199634432793,3.059999942779541,CoralReefs,NA
+Gymnothorax,Gymnothorax eurostus,reef-associated,60,6.456539849750698e-4,3.2799999713897705,CoralReefs,Crus
+Gymnothorax,Gymnothorax flavimarginatus,reef-associated,240,3.548130043782294e-4,3.3499999046325684,"CoralReefs, DropOffs, ReefFlats",Pisc
+Gymnothorax,Gymnothorax melatremus,reef-associated,30,4.786300123669207e-4,3.2799999713897705,CoralReefs,Crus
+Gymnothorax,Gymnothorax meleagris,reef-associated,120,5.754400044679642e-4,3.319999933242798,CoralReefs,Pisc
+Gymnothorax,Gymnothorax pictus,reef-associated,140,4.897789913229644e-4,3.2799999713897705,"SeaGrassBeds, CoralReefs",Pisc
+Halichoeres,Halichoeres biocellatus,reef-associated,12,0.00954992976039648,3.0899999141693115,CoralReefs,InvMic
+Halichoeres,Halichoeres chloropterus,reef-associated,23.18000030517578,0.0074130999855697155,3.0299999713897705,CoralReefs,InvMic
+Halichoeres,Halichoeres chrysus,reef-associated,12,0.00954992976039648,3.0899999141693115,CoralReefs,InvMic
+Halichoeres,Halichoeres claudia,benthopelagic,10.739999771118164,0.004897790029644966,3.109999895095825,NA,InvMic
+Halichoeres,Halichoeres hartzfeldii,reef-associated,18,0.00954992976039648,3.0899999141693115,CoralReefs,InvMic
+Halichoeres,Halichoeres hortulanus,reef-associated,27,0.009332540445029736,3.0899999141693115,"SeaGrassBeds, CoralReefs",InvMac
+Halichoeres,Halichoeres margaritaceus,reef-associated,15.25,0.00954992976039648,3.0899999141693115,CoralReefs,InvMic
+Halichoeres,Halichoeres marginatus,reef-associated,18,0.010471300221979618,3.1500000953674316,"SeaGrassBeds, CoralReefs",InvMic
+Halichoeres,Halichoeres melanurus,reef-associated,12,0.01288249995559454,3.190000057220459,CoralReefs,InvMic
+Halichoeres,Halichoeres melasmapomus,reef-associated,24,0.00954992976039648,3.0899999141693115,CoralReefs,InvMic
+Halichoeres,Halichoeres miniatus,reef-associated,14,0.00954992976039648,3.0899999141693115,NA,InvMic
+Halichoeres,Halichoeres nebulosus,reef-associated,12,0.00954992976039648,3.0899999141693115,CoralReefs,InvMac
+Halichoeres,Halichoeres prosopeion,reef-associated,15.859999656677246,0.00954992976039648,3.0899999141693115,CoralReefs,InvMic
+Halichoeres,Halichoeres scapularis,reef-associated,20,0.009999999776482582,3.1500000953674316,"SeaGrassBeds, CoralReefs",InvMic
+Halichoeres,Halichoeres trimaculatus,reef-associated,27,0.010232900269329548,3,CoralReefs,InvMic
+Hemitaurichthys,Hemitaurichthys polylepis,reef-associated,18,0.022387199103832245,3.009999990463257,CoralReefs,Plank
+Hemiglyphidodon,Hemiglyphidodon plagiometopon,reef-associated,18,0.023442300036549568,2.9800000190734863,CoralReefs,Plank
+Hemigymnus,Hemigymnus fasciatus,reef-associated,30,0.009772369638085365,3.069999933242798,CoralReefs,Plank
+Hemigymnus,Hemigymnus melapterus,reef-associated,39.599998474121094,0.01288249995559454,3.059999942779541,CoralReefs,InvMic
+Hemiscyllium,Hemiscyllium ocellatum,reef-associated,107,0.004073800053447485,3.0899999141693115,CoralReefs,NA
+Heniochus,Heniochus acuminatus,reef-associated,25,0.02290870063006878,3.0399999618530273,"SeaGrassBeds, CoralReefs",Cor
+Heniochus,Heniochus chrysostomus,reef-associated,18,0.019498400390148163,3.0899999141693115,CoralReefs,Cor
+Heniochus,Heniochus monoceros,reef-associated,24,0.02041739970445633,3.049999952316284,CoralReefs,Cor
+Heniochus,Heniochus varius,reef-associated,19,0.022387199103832245,3.009999990463257,CoralReefs,Cor
+Hipposcarus,Hipposcarus longiceps,reef-associated,60,0.011749000288546085,3.0299999713897705,"SeaGrassBeds, CoralReefs, Lagoons",Herb
+Hologymnosus,Hologymnosus annulatus,reef-associated,40,0.009772369638085365,3.069999933242798,CoralReefs,InvMac
+Hologymnosus,Hologymnosus doliatus,reef-associated,50,0.004897790029644966,3.109999895095825,CoralReefs,InvMac
+Hyporhamphus,Hyporhamphus affinis,reef-associated,46.36000061035156,0.0025704000145196915,3.0899999141693115,"SeaGrassBeds, CoralReefs",Plank
+Kyphosus,Kyphosus cinerascens,reef-associated,58.83000183105469,0.019952600821852684,3.009999990463257,CoralReefs,Herb
+Kyphosus,Kyphosus vaigiensis,reef-associated,70,0.01819700002670288,3,"SeaGrassBeds, CoralReefs",Herb
+Labrichthys,Labrichthys unilineatus,reef-associated,17.5,0.00954992976039648,3.069999933242798,CoralReefs,Cor
+Labroides,Labroides bicolor,reef-associated,15,0.005011870060116053,3.1500000953674316,CoralReefs,InvMic
+Labroides,Labroides dimidiatus,reef-associated,14,0.005888440180569887,3.1700000762939453,"SeaGrassBeds, CoralReefs",Plank
+Labroides,Labroides rubrolabiatus,reef-associated,9,0.00954992976039648,3.069999933242798,NA,InvMic
+Labropsis,Labropsis australis,reef-associated,10.5,0.00954992976039648,3.069999933242798,CoralReefs,InvMic
+Lactoria,Lactoria cornuta,reef-associated,46,0.02041739970445633,2.7699999809265137,"SeaGrassBeds, CoralReefs",InvSes
+Lepidozygus,Lepidozygus tapeinosoma,reef-associated,10.5,0.01258930005133152,3.0399999618530273,CoralReefs,Herb
+Leptoscarus,Leptoscarus vaigiensis,reef-associated,35.20000076293945,0.008709640242159367,3.009999990463257,"Macrophyte, SeaGrassBeds, CoralReefs",Herb
+Lethrinus,Lethrinus atkinsoni,reef-associated,50,0.015848899260163307,3,"SeaGrassBeds, CoralReefs, DropOffs",Pisc
+Lethrinus,Lethrinus harak,reef-associated,60.939998626708984,0.015135600231587887,2.9800000190734863,"SeaGrassBeds, CoralReefs",Crus
+Lethrinus,Lethrinus lentjan,reef-associated,52,0.015488199889659882,2.9700000286102295,"SeaGrassBeds, CoralReefs",InvMic
+Lethrinus,Lethrinus nebulosus,reef-associated,87,0.01698240078985691,2.9800000190734863,"SeaGrassBeds, CoralReefs",Pisc
+Lethrinus,Lethrinus obsoletus,reef-associated,60,0.011749000288546085,2.9700000286102295,"Macrophyte, SeaGrassBeds, CoralReefs",InvMic
+Lethrinus,Lethrinus olivaceus,reef-associated,100,0.015848899260163307,2.9700000286102295,"SeaGrassBeds, CoralReefs",Pisc
+Lethrinus,Lethrinus xanthochilus,reef-associated,77.69999694824219,0.015488199889659882,2.9600000381469727,"SeaGrassBeds, CoralReefs",Pisc
+Lutjanus,Lutjanus biguttatus,reef-associated,25,0.014454400166869164,2.9700000286102295,"CoralReefs, Lagoons",Crus
+Lutjanus,Lutjanus bohar,reef-associated,90,0.013489600270986557,2.990000009536743,"SeaGrassBeds, CoralReefs",Crus
+Lutjanus,Lutjanus carponotatus,reef-associated,40,0.014454400166869164,2.9600000381469727,"CoralReefs, Lagoons",Crus
+Lutjanus,Lutjanus fulviflamma,reef-associated,35,0.015848899260163307,2.9800000190734863,"SeaGrassBeds, CoralReefs",Crus
+Lutjanus,Lutjanus fulvus,reef-associated,40,0.015135600231587887,2.9800000190734863,CoralReefs,Crus
+Lutjanus,Lutjanus gibbus,reef-associated,63.04999923706055,0.015135600231587887,2.9800000190734863,"SeaGrassBeds, CoralReefs",Crus
+Lutjanus,Lutjanus kasmira,reef-associated,40,0.014791100285947323,2.9800000190734863,"SeaGrassBeds, CoralReefs",Crus
+Lutjanus,Lutjanus monostigma,reef-associated,60,0.014454400166869164,2.950000047683716,CoralReefs,Crus
+Lutjanus,Lutjanus quinquelineatus,reef-associated,38,0.013182600028812885,2.990000009536743,CoralReefs,Crus
+Lutjanus,Lutjanus rivulatus,reef-associated,80,0.015488199889659882,3.0299999713897705,CoralReefs,InvMac
+Lutjanus,Lutjanus russellii,reef-associated,50,0.013182600028812885,2.990000009536743,CoralReefs,Crus
+Macropharyngodon,Macropharyngodon meleagris,reef-associated,18.299999237060547,0.009772369638085365,3.069999933242798,CoralReefs,Herb
+Macropharyngodon,Macropharyngodon negrosensis,reef-associated,12,0.009772369638085365,3.069999933242798,CoralReefs,InvMic
+Macropharyngodon,Macropharyngodon ornatus,reef-associated,13,0.009772369638085365,3.069999933242798,NA,Herb
+Malacanthus,Malacanthus brevirostris,reef-associated,32,0.0053703198209404945,3.0299999713897705,CoralReefs,NA
+Meiacanthus,Meiacanthus grammistes,reef-associated,11,0.005623409990221262,3.059999942779541,CoralReefs,Herb
+Melichthys,Melichthys niger,reef-associated,50,0.025704000145196915,2.930000066757202,"SeaGrassBeds, CoralReefs, DeepWaterCorals",Herb
+Melichthys,Melichthys vidua,reef-associated,40,0.026915300637483597,3.0399999618530273,CoralReefs,Herb
+Monotaxis,Monotaxis grandoculis,reef-associated,60,0.021877599880099297,2.950000047683716,"SeaGrassBeds, CoralReefs",InvMac
+Monotaxis,Monotaxis heterodon,reef-associated,60,0.017782799899578094,2.9700000286102295,NA,NA
+Mulloidichthys,Mulloidichthys flavolineatus,reef-associated,43,0.010715199634432793,3.0899999141693115,"SeaGrassBeds, CoralReefs",InvMac
+Mulloidichthys,Mulloidichthys vanicolensis,reef-associated,44.18000030517578,0.010232900269329548,3.0899999141693115,"SeaGrassBeds, CoralReefs",Crus
+Myripristis,Myripristis adusta,reef-associated,35,0.020893000066280365,3.009999990463257,"CoralReefs, DropOffs",Crus
+Myripristis,Myripristis amaena,reef-associated,32.33000183105469,0.02041739970445633,3.0799999237060547,"CoralReefs, DropOffs, ReefFlats",Plank
+Myripristis,Myripristis berndti,reef-associated,30,0.019952600821852684,3.009999990463257,"CoralReefs, DropOffs, ReefFlats",Crus
+Myripristis,Myripristis kuntee,reef-associated,26,0.021877599880099297,3.119999885559082,"CoralReefs, ReefFlats, Lagoons, Crevices",Plank
+Myripristis,Myripristis murdjan,reef-associated,60,0.017782799899578094,3.059999942779541,CoralReefs,Crus
+Myripristis,Myripristis violacea,reef-associated,35,0.024547100067138672,3.0199999809265137,CoralReefs,Crus
+Naso,Naso annulatus,reef-associated,100,0.022387199103832245,2.9700000286102295,"CoralReefs, DropOffs, Lagoons",Herb
+Naso,Naso brachycentron,reef-associated,99.9000015258789,0.013489600270986557,2.9600000381469727,CoralReefs,Herb
+Naso,Naso brevirostris,reef-associated,60,0.019498400390148163,3.009999990463257,"SeaGrassBeds, CoralReefs, DropOffs, Lagoons",Herb
+Naso,Naso hexacanthus,reef-associated,83.25,0.021877599880099297,2.9800000190734863,"CoralReefs, DropOffs, Lagoons",Plank
+Naso,Naso lituratus,reef-associated,56.119998931884766,0.024547100067138672,2.9700000286102295,CoralReefs,Herb
+Naso,Naso tonganus,reef-associated,73.19999694824219,0.02511890046298504,2.990000009536743,CoralReefs,Herb
+Naso,Naso unicornis,reef-associated,77.69999694824219,0.023442300036549568,2.950000047683716,"SeaGrassBeds, CoralReefs, Lagoons",Herb
+Naso,Naso vlamingii,reef-associated,60,0.026302700862288475,3,"CoralReefs, DropOffs, Lagoons",Herb
+Nebrius,Nebrius ferrugineus,reef-associated,320,0.0041686901822686195,3.0799999237060547,CoralReefs,NA
+Nectamia,Nectamia fusca,reef-associated,11.199999809265137,0.01698240078985691,2.9600000381469727,CoralReefs,InvMic
+Negaprion,Negaprion acutidens,reef-associated,380,0.005011870060116053,3.0799999237060547,CoralReefs,NA
+Nemateleotris,Nemateleotris magnifica,reef-associated,9,0.0038904501125216484,3.119999885559082,CoralReefs,Plank
+Neocirrhites,Neocirrhites armatus,reef-associated,9,0.014454400166869164,3.069999933242798,CoralReefs,Crus
+Neoniphon,Neoniphon sammara,reef-associated,32,0.015848899260163307,3,"SeaGrassBeds, CoralReefs",Crus
+Neopomacentrus,Neopomacentrus azysron,reef-associated,7.5,0.018620900809764862,2.940000057220459,CoralReefs,Plank
+Neopomacentrus,Neopomacentrus cyanomos,reef-associated,10,0.014454400166869164,3,CoralReefs,Plank
+Neoglyphidodon,Neoglyphidodon melas,reef-associated,18,0.023442300036549568,2.9800000190734863,"SeaGrassBeds, CoralReefs",Plank
+Neoglyphidodon,Neoglyphidodon nigroris,reef-associated,13,0.018620900809764862,2.990000009536743,CoralReefs,Plank
+Neoniphon,Neoniphon argenteus,reef-associated,24,0.019498400390148163,2.940000057220459,CoralReefs,Crus
+Neoniphon,Neoniphon opercularis,reef-associated,35,0.015488199889659882,2.9700000286102295,CoralReefs,Crus
+Novaculichthys,Novaculichthys taeniourus,reef-associated,30,0.02041739970445633,2.9600000381469727,"SeaGrassBeds, CoralReefs, ReefFlats, Lagoons",InvMac
+Odonus,Odonus niger,reef-associated,50,0.032359398901462555,2.950000047683716,CoralReefs,InvMac
+Ostorhinchus,Ostorhinchus angustatus,reef-associated,11,0.014125400222837925,3.069999933242798,CoralReefs,InvMic
+Ostorhinchus,Ostorhinchus compressus,reef-associated,12,0.009332540445029736,3.059999942779541,CoralReefs,Crus
+Ostorhinchus,Ostorhinchus cookii,reef-associated,10,0.013803799636662006,3.0999999046325684,CoralReefs,Crus
+Ostorhinchus,Ostorhinchus cyanosoma,reef-associated,8,0.013182600028812885,3.130000114440918,"SeaGrassBeds, CoralReefs",InvMic
+Ostorhinchus,Ostorhinchus doederleini,reef-associated,14,0.014125400222837925,3.180000066757202,CoralReefs,Crus
+Ostorhinchus,Ostorhinchus jenkinsi,demersal,10.609999656677246,0.01288249995559454,3.0999999046325684,NA,InvMic
+Ostorhinchus,Ostorhinchus nigrofasciatus,reef-associated,10,0.007943280041217804,3.3399999141693115,"SeaGrassBeds, CoralReefs",Crus
+Ostorhinchus,Ostorhinchus properuptus,reef-associated,6,0.005495409946888685,3.2699999809265137,NA,InvMic
+Ostracion,Ostracion cubicum,reef-associated,45,0.052480701357126236,2.759999990463257,"SeaGrassBeds, CoralReefs",NA
+Ostracion,Ostracion meleagris,reef-associated,25,0.035481300204992294,2.809999942779541,"CoralReefs, DropOffs, ReefFlats",InvSes
+Oxycheilinus,Oxycheilinus bimaculatus,reef-associated,15,0.019498400390148163,2.7699999809265137,"SeaGrassBeds, CoralReefs",InvMic
+Oxycheilinus,Oxycheilinus digramma,reef-associated,48.79999923706055,0.019498400390148163,2.950000047683716,"SeaGrassBeds, CoralReefs",Crus
+Oxycheilinus,Oxycheilinus lineatus,reef-associated,19.459999084472656,0.016218099743127823,2.950000047683716,NA,InvMic
+Oxycheilinus,Oxycheilinus unifasciatus,reef-associated,46,0.016218099743127823,2.950000047683716,CoralReefs,Crus
+Oxymonacanthus,Oxymonacanthus longirostris,reef-associated,12,0.019952600821852684,2.930000066757202,CoralReefs,Cor
+Paracirrhites,Paracirrhites arcatus,reef-associated,20,0.010232900269329548,3.119999885559082,CoralReefs,Crus
+Paracirrhites,Paracirrhites forsteri,reef-associated,22,0.008709640242159367,3.0999999046325684,CoralReefs,Crus
+Paracirrhites,Paracirrhites hemistictus,reef-associated,29,0.009332540445029736,3.0899999141693115,NA,Crus
+Paragobiodon,Paragobiodon echinocephalus,reef-associated,4,0.019952600821852684,3.009999990463257,CoralReefs,InvMic
+Paragobiodon,Paragobiodon lacunicolus,reef-associated,3,0.019952600821852684,3.009999990463257,CoralReefs,NA
+Paragobiodon,Paragobiodon modestus,reef-associated,3.5,0.019952600821852684,3.009999990463257,CoralReefs,InvMic
+Parapercis,Parapercis hexophtalma,reef-associated,29,0.008128300309181213,3.109999895095825,CoralReefs,Crus
+Parapercis,Parapercis millepunctata,reef-associated,18,0.006918310187757015,3.059999942779541,CoralReefs,Crus
+Parapercis,Parapercis multiplicata,reef-associated,15,0.006918310187757015,3.059999942779541,CoralReefs,Crus
+Parupeneus,Parupeneus barberinus,reef-associated,60,0.01148150023072958,3.0899999141693115,"SeaGrassBeds, CoralReefs",Crus
+Parupeneus,Parupeneus ciliatus,reef-associated,38,0.010964799672365189,3.130000114440918,"SeaGrassBeds, CoralReefs",Crus
+Parupeneus,Parupeneus crassilabris,reef-associated,38,0.012022599577903748,3.0899999141693115,CoralReefs,Crus
+Parupeneus,Parupeneus cyclostomus,reef-associated,50,0.0123027004301548,3.0899999141693115,"SeaGrassBeds, CoralReefs",Crus
+Parupeneus,Parupeneus indicus,reef-associated,45,0.011749000288546085,3.0999999046325684,"SeaGrassBeds, CoralReefs",Crus
+Parupeneus,Parupeneus insularis,reef-associated,33.630001068115234,0.01122019998729229,3.130000114440918,CoralReefs,Crus
+Parupeneus,Parupeneus multifasciatus,reef-associated,35,0.01288249995559454,3.0999999046325684,CoralReefs,Crus
+Parupeneus,Parupeneus pleurostigma,reef-associated,33,0.012022599577903748,3.0899999141693115,"SeaGrassBeds, CoralReefs",Crus
+Parupeneus,Parupeneus spilurus,reef-associated,50,0.01258930005133152,3.0399999618530273,CoralReefs,Crus
+Petroscirtes,Petroscirtes xestus,reef-associated,7.5,0.005623409990221262,3.059999942779541,NA,Herb
+Plectorhinchus,Plectorhinchus albovittatus,reef-associated,122,0.014125400222837925,3,CoralReefs,InvMac
+Plectorhinchus,Plectorhinchus caeruleonothus,reef-associated,100,0.014125400222837925,3,NA,NA
+Plectorhinchus,Plectorhinchus chaetodonoides,reef-associated,72,0.017782799899578094,2.9700000286102295,"CoralReefs, Crevices",InvMac
+Plectorhinchus,Plectorhinchus chrysotaenia,reef-associated,50.02000045776367,0.014125400222837925,3,CoralReefs,InvMic
+Plagiotremus,Plagiotremus rhinorhynchos,reef-associated,14.640000343322754,0.0063095698133111,3.140000104904175,CoralReefs,Crus
+Plagiotremus,Plagiotremus tapeinosoma,reef-associated,14,0.004677350167185068,3.009999990463257,CoralReefs,Herb
+Platax,Platax orbicularis,reef-associated,60,0.032359398901462555,2.950000047683716,"SeaGrassBeds, CoralReefs",NA
+Platax,Platax pinnatus,reef-associated,45,0.027542300522327423,2.940000057220459,CoralReefs,NA
+Plectorhinchus,Plectorhinchus gibbosus,reef-associated,75,0.02041739970445633,2.930000066757202,"SeaGrassBeds, CoralReefs",InvMac
+Plectorhinchus,Plectorhinchus lineatus,reef-associated,72,0.012022599577903748,3.009999990463257,"SeaGrassBeds, CoralReefs",InvMac
+Plectroglyphidodon,Plectroglyphidodon apicalis,reef-associated,15,0.019498400390148163,3,NA,NA
+Plectroglyphidodon,Plectroglyphidodon dickii,reef-associated,11.600000381469727,0.019952600821852684,2.9800000190734863,CoralReefs,Herb
+Plectroglyphidodon,Plectroglyphidodon fasciolatus,reef-associated,11.220000267028809,0.01258930005133152,3.0399999618530273,CoralReefs,NA
+Plectroglyphidodon,Plectroglyphidodon flaviventris,reef-associated,8.539999961853027,0.019498400390148163,3,CoralReefs,Plank
+Plectroglyphidodon,Plectroglyphidodon johnstonianus,reef-associated,14,0.02137959934771061,2.9600000381469727,CoralReefs,Cor
+Plectroglyphidodon,Plectroglyphidodon leucozonus,reef-associated,12,0.019498400390148163,3,CoralReefs,Plank
+Plectropomus,Plectropomus laevis,reef-associated,125,0.009999999776482582,3.069999933242798,CoralReefs,Pisc
+Plectropomus,Plectropomus leopardus,reef-associated,146.39999389648438,0.011749000288546085,3.049999952316284,NA,Pisc
+Plectropomus,Plectropomus maculatus,reef-associated,125,0.01122019998729229,3.049999952316284,CoralReefs,Pisc
+Pogonoperca,Pogonoperca punctata,reef-associated,35,0.01122019998729229,3.0399999618530273,CoralReefs,Crus
+Polydactylus,Polydactylus sexfilis,reef-associated,61,0.01819700002670288,3.109999895095825,NA,Crus
+Pomacanthus,Pomacanthus imperator,reef-associated,48.79999923706055,0.04677350074052811,2.9000000953674316,"CoralReefs, ReefFlats, Lagoons",InvSes
+Pomacanthus,Pomacanthus semicirculatus,reef-associated,48.79999923706055,0.03801890090107918,2.880000114440918,CoralReefs,InvSes
+Pomacanthus,Pomacanthus sexstriatus,reef-associated,46,0.03801890090107918,2.869999885559082,CoralReefs,InvSes
+Pomacanthus,Pomacanthus xanthometopon,reef-associated,38,0.03801890090107918,2.880000114440918,CoralReefs,InvSes
+Pomacentrus,Pomacentrus adelus,reef-associated,8.5,0.02290870063006878,3.0199999809265137,CoralReefs,Herb
+Pomacentrus,Pomacentrus amboinensis,reef-associated,9,0.026302700862288475,2.890000104904175,CoralReefs,Plank
+Pomacentrus,Pomacentrus bankanensis,reef-associated,9,0.014454400166869164,3,"CoralReefs, DropOffs, ReefFlats, Lagoons",Herb
+Pomacentrus,Pomacentrus brachialis,reef-associated,9.760000228881836,0.020893000066280365,3.0799999237060547,"CoralReefs, DropOffs, ReefFlats",Plank
+Pomacentrus,Pomacentrus chrysurus,reef-associated,9,0.026915300637483597,3.0399999618530273,"SeaGrassBeds, CoralReefs, Lagoons",Herb
+Pomacentrus,Pomacentrus coelestis,reef-associated,9,0.014125400222837925,2.950000047683716,CoralReefs,Plank
+Pomacentrus,Pomacentrus grammorhynchus,reef-associated,10.979999542236328,0.023988299071788788,2.9800000190734863,CoralReefs,Plank
+Pomacentrus,Pomacentrus lepidogenys,reef-associated,10.979999542236328,0.026915300637483597,3.0399999618530273,CoralReefs,Plank
+Pomacentrus,Pomacentrus magniseptus,reef-associated,9.220000267028809,0.023988299071788788,2.9800000190734863,NA,NA
+Pomacentrus,Pomacentrus moluccensis,reef-associated,9,0.02884029969573021,2.9600000381469727,CoralReefs,Plank
+Pomacentrus,Pomacentrus nagasakiensis,reef-associated,11,0.014454400166869164,3,CoralReefs,Herb
+Pomacentrus,Pomacentrus pavo,reef-associated,10.369999885559082,0.020893000066280365,2.930000066757202,CoralReefs,Plank
+Pomacentrus,Pomacentrus reidi,reef-associated,9,0.023988299071788788,2.9800000190734863,CoralReefs,Herb
+Pomacentrus,Pomacentrus wardi,reef-associated,9.760000228881836,0.023988299071788788,2.9800000190734863,CoralReefs,Plank
+Pomachromis,Pomachromis fuscidorsalis,reef-associated,7.320000171661377,0.014454400166869164,3,NA,Plank
+Pristiapogon,Pristiapogon exostigma,reef-associated,12,0.011749000288546085,3.0799999237060547,CoralReefs,Crus
+Pristiapogon,Pristiapogon fraenatus,reef-associated,11,0.011749000288546085,3.069999933242798,CoralReefs,InvMic
+Pristiapogon,Pristiapogon kallopterus,reef-associated,15.5,0.01288249995559454,3.140000104904175,CoralReefs,Crus
+Pseudanthias,Pseudanthias mooreanus,reef-associated,8.779999732971191,0.0123027004301548,3,NA,Crus
+Pseudanthias,Pseudanthias olivaceus,reef-associated,12,0.0123027004301548,3,NA,Crus
+Pseudobalistes,Pseudobalistes flavimarginatus,reef-associated,60,0.025704000145196915,2.930000066757202,"CoralReefs, Lagoons",InvMac
+Pseudobalistes,Pseudobalistes fuscus,reef-associated,55,0.03630780056118965,2.940000057220459,CoralReefs,InvMac
+Pseudocheilinus,Pseudocheilinus evanidus,reef-associated,9,0.016218099743127823,2.950000047683716,CoralReefs,Plank
+Pseudocheilinus,Pseudocheilinus hexataenia,reef-associated,10,0.016218099743127823,2.9600000381469727,CoralReefs,Plank
+Pseudocheilinus,Pseudocheilinus octotaenia,reef-associated,17.079999923706055,0.016218099743127823,2.950000047683716,CoralReefs,Plank
+Pseudocheilinus,Pseudocheilinus tetrataenia,reef-associated,7.5,0.016218099743127823,2.950000047683716,CoralReefs,Plank
+Pseudochromis,Pseudochromis fuscus,reef-associated,10,0.004897790029644966,3.0999999046325684,CoralReefs,InvMic
+Pseudodax,Pseudodax moluccanus,reef-associated,30,0.01122019998729229,3.0399999618530273,CoralReefs,InvMac
+Pseudojuloides,Pseudojuloides atavai,reef-associated,13,0.009772369638085365,3.069999933242798,"CoralReefs, Lagoons",InvMic
+Pseudojuloides,Pseudojuloides cerasinus,reef-associated,10.869999885559082,0.009772369638085365,3.069999933242798,NA,InvMic
+Ptereleotris,Ptereleotris evides,reef-associated,14,0.0038904501125216484,3.119999885559082,CoralReefs,Plank
+Ptereleotris,Ptereleotris heteroptera,reef-associated,14,0.0038904501125216484,3.119999885559082,CoralReefs,Plank
+Ptereleotris,Ptereleotris microlepis,reef-associated,13,0.0038904501125216484,3.119999885559082,CoralReefs,Plank
+Ptereleotris,Ptereleotris monoptera,reef-associated,14.640000343322754,0.0038904501125216484,3.119999885559082,NA,Plank
+Ptereleotris,Ptereleotris zebra,reef-associated,14.640000343322754,0.0038904501125216484,3.119999885559082,CoralReefs,Plank
+Pterocaesio,Pterocaesio digramma,reef-associated,30,0.011749000288546085,3.1500000953674316,CoralReefs,NA
+Pterocaesio,Pterocaesio marri,reef-associated,35,0.010964799672365189,3.109999895095825,"SeaGrassBeds, CoralReefs",NA
+Pterocaesio,Pterocaesio tile,reef-associated,30,0.01288249995559454,3.140000104904175,CoralReefs,NA
+Pterocaesio,Pterocaesio trilineata,reef-associated,20,0.01122019998729229,3.109999895095825,CoralReefs,NA
+Pterois,Pterois antennata,reef-associated,20,0.010232900269329548,3.009999990463257,"SeaGrassBeds, CoralReefs, Crevices",Crus
+Pterois,Pterois radiata,reef-associated,24,0.010232900269329548,3.009999990463257,CoralReefs,Crus
+Pterois,Pterois volitans,reef-associated,45.70000076293945,0.008128300309181213,3.0899999141693115,"Macrophyte, SeaGrassBeds, CoralReefs, Lagoons, Crevices",Crus
+Rhinecanthus,Rhinecanthus aculeatus,reef-associated,30,0.019054599106311798,2.9200000762939453,"SeaGrassBeds, CoralReefs",InvMic
+Rhinecanthus,Rhinecanthus lunula,reef-associated,28,0.025704000145196915,2.930000066757202,NA,InvMic
+Rhinecanthus,Rhinecanthus rectangulus,reef-associated,30,0.025704000145196915,2.9200000762939453,CoralReefs,InvMic
+Pycnochromis,Pycnochromis margaritifer,reef-associated,10.199999809265137,0.016595900058746338,2.9700000286102295,CoralReefs,NA
+Pycnochromis,Pycnochromis retrofasciatus,reef-associated,7.320000171661377,0.014791100285947323,2.9200000762939453,CoralReefs,NA
+Pygoplites,Pygoplites diacanthus,reef-associated,30.5,0.032359398901462555,2.890000104904175,"CoralReefs, Lagoons",InvSes
+Salarias,Salarias alboguttatus,reef-associated,9,0.0074130999855697155,3.0199999809265137,CoralReefs,Herb
+Salarias,Salarias ceramensis,reef-associated,15,0.0074130999855697155,3.0199999809265137,CoralReefs,Herb
+Sargocentron,Sargocentron caudimaculatum,reef-associated,25,0.021877599880099297,3.009999990463257,CoralReefs,Crus
+Sargocentron,Sargocentron diadema,reef-associated,17,0.016218099743127823,2.9800000190734863,"SeaGrassBeds, CoralReefs",Crus
+Sargocentron,Sargocentron microstoma,reef-associated,20,0.015848899260163307,3.130000114440918,CoralReefs,Crus
+Sargocentron,Sargocentron punctatissimum,reef-associated,23,0.013489600270986557,2.9800000190734863,CoralReefs,InvMac
+Sargocentron,Sargocentron spiniferum,reef-associated,56.61000061035156,0.016595900058746338,2.9800000190734863,CoralReefs,Crus
+Sargocentron,Sargocentron tiere,reef-associated,33,0.021877599880099297,2.9800000190734863,CoralReefs,Crus
+Saurida,Saurida gracilis,reef-associated,39.040000915527344,0.007244360167533159,3.130000114440918,"SeaGrassBeds, CoralReefs",Pisc
+Scarus,Scarus altipinnis,reef-associated,60,0.014454400166869164,3.0299999713897705,CoralReefs,Herb
+Scarus,Scarus chameleon,reef-associated,31,0.014454400166869164,3.0299999713897705,CoralReefs,Herb
+Scarus,Scarus dimidiatus,reef-associated,40,0.013803799636662006,3.130000114440918,"CoralReefs, Lagoons",Herb
+Scarus,Scarus flavipectoralis,reef-associated,40,0.023988299071788788,3.0299999713897705,CoralReefs,Herb
+Scarus,Scarus forsteni,reef-associated,55,0.02041739970445633,2.9800000190734863,CoralReefs,Herb
+Scarus,Scarus frenatus,reef-associated,47,0.017378000542521477,3.069999933242798,CoralReefs,Herb
+Scarus,Scarus ghobban,reef-associated,75,0.014454400166869164,3.0299999713897705,"SeaGrassBeds, CoralReefs",Herb
+Scarus,Scarus globiceps,reef-associated,45,0.009772369638085365,3.0899999141693115,CoralReefs,Herb
+Scarus,Scarus niger,reef-associated,44.400001525878906,0.015488199889659882,3.0399999618530273,CoralReefs,Herb
+Scarus,Scarus oviceps,reef-associated,44.5,0.010715199634432793,3.130000114440918,CoralReefs,Herb
+Scarus,Scarus psittacus,reef-associated,43,0.015488199889659882,3.0399999618530273,"SeaGrassBeds, CoralReefs",Herb
+Scarus,Scarus rivulatus,reef-associated,48.79999923706055,0.015135600231587887,3.069999933242798,CoralReefs,Herb
+Scarus,Scarus rubroviolaceus,reef-associated,70,0.01288249995559454,3.0999999046325684,"CoralReefs, DropOffs",Herb
+Scarus,Scarus schlegeli,reef-associated,40,0.016595900058746338,3.0299999713897705,CoralReefs,Herb
+Scarus,Scarus spinus,reef-associated,30,0.010232900269329548,3.0899999141693115,"SeaGrassBeds, CoralReefs",Herb
+Scarus,Scarus tricolor,reef-associated,52.70000076293945,0.017782799899578094,3.059999942779541,CoralReefs,Herb
+Scolopsis,Scolopsis bilineata,reef-associated,25,0.013803799636662006,3.059999942779541,CoralReefs,InvMic
+Scolopsis,Scolopsis lineata,reef-associated,25,0.016218099743127823,2.990000009536743,CoralReefs,InvMic
+Scolopsis,Scolopsis monogramma,reef-associated,38,0.019054599106311798,3.0299999713897705,CoralReefs,InvMic
+Scolopsis,Scolopsis trilineata,reef-associated,25,0.016218099743127823,2.990000009536743,CoralReefs,InvMic
+Scomberoides,Scomberoides lysan,reef-associated,110,0.01258930005133152,2.869999885559082,"SeaGrassBeds, CoralReefs",Pisc
+Scorpaenopsis,Scorpaenopsis diabolus,reef-associated,30,0.01258930005133152,3.0299999713897705,"CoralReefs, Crevices",Crus
+Scorpaenopsis,Scorpaenopsis papuensis,reef-associated,25,0.01258930005133152,3.0299999713897705,"Macrophyte, CoralReefs",Crus
+Sebastapistes,Sebastapistes tinkhami,reef-associated,10,0.01258930005133152,3.0299999713897705,NA,Crus
+Siganus,Siganus argenteus,reef-associated,40,0.014125400222837925,3,"SeaGrassBeds, CoralReefs, ReefFlats",Herb
+Siganus,Siganus canaliculatus,reef-associated,40,0.014454400166869164,2.9800000190734863,"SeaGrassBeds, CoralReefs",Herb
+Siganus,Siganus corallinus,reef-associated,42.70000076293945,0.010715199634432793,3.1700000762939453,"SeaGrassBeds, CoralReefs",Herb
+Siganus,Siganus doliatus,reef-associated,30.5,0.013489600270986557,3.109999895095825,"SeaGrassBeds, CoralReefs",Herb
+Siganus,Siganus lineatus,reef-associated,43,0.017378000542521477,3,"SeaGrassBeds, CoralReefs",Herb
+Siganus,Siganus puellus,reef-associated,38,0.0123027004301548,2.9800000190734863,CoralReefs,Herb
+Siganus,Siganus punctatissimus,reef-associated,42.70000076293945,0.014454400166869164,3.069999933242798,CoralReefs,Herb
+Siganus,Siganus punctatus,reef-associated,40,0.01288249995559454,3.1500000953674316,"SeaGrassBeds, CoralReefs",Herb
+Siganus,Siganus spinus,reef-associated,28,0.019498400390148163,3.009999990463257,CoralReefs,Herb
+Siganus,Siganus vulpinus,reef-associated,30.5,0.014454400166869164,3.069999933242798,CoralReefs,Herb
+Sphyraena,Sphyraena barracuda,reef-associated,200,0.008511380292475224,2.930000066757202,"SeaGrassBeds, CoralReefs",Pisc
+Sphyraena,Sphyraena flavicauda,reef-associated,60,0.007943280041217804,2.890000104904175,SeaGrassBeds,NA
+Sphyraena,Sphyraena jello,reef-associated,150,0.007244360167533159,2.9200000762939453,SeaGrassBeds,NA
+Sphyraena,Sphyraena obtusata,reef-associated,55,0.007079460192471743,2.9100000858306885,"SeaGrassBeds, CoralReefs",NA
+Sphyraena,Sphyraena qenie,reef-associated,170,0.007079460192471743,2.9200000762939453,SeaGrassBeds,NA
+Stegastes,Stegastes albifasciatus,reef-associated,13,0.019952600821852684,2.990000009536743,CoralReefs,Herb
+Stegastes,Stegastes lacrymatus,reef-associated,10,0.019498400390148163,2.990000009536743,"SeaGrassBeds, CoralReefs",NA
+Stegastes,Stegastes nigricans,reef-associated,14,0.023988299071788788,3.0299999713897705,"CoralReefs, Lagoons",Herb
+Stegastes,Stegastes punctatus,reef-associated,15.859999656677246,0.02290870063006878,2.9700000286102295,CoralReefs,Plank
+Stethojulis,Stethojulis bandanensis,reef-associated,15,0.009999999776482582,3,"SeaGrassBeds, CoralReefs",InvMic
+Stethojulis,Stethojulis strigiventer,reef-associated,15,0.008128300309181213,3,"SeaGrassBeds, CoralReefs",InvMic
+Stethojulis,Stethojulis trilineata,reef-associated,15,0.010232900269329548,3.0999999046325684,CoralReefs,InvMic
+Sufflamen,Sufflamen bursa,reef-associated,25,0.025704000145196915,2.930000066757202,CoralReefs,InvMac
+Sufflamen,Sufflamen chrysopterum,reef-associated,30,0.02290870063006878,2.940000057220459,"SeaGrassBeds, CoralReefs",InvMic
+Synanceia,Synanceia verrucosa,reef-associated,48.79999923706055,0.016218099743127823,3.059999942779541,CoralReefs,NA
+Synchiropus,Synchiropus ocellatus,reef-associated,8.899999618530273,0.009999999776482582,2.940000057220459,NA,NA
+Synodus,Synodus binotatus,reef-associated,18,0.00446684006601572,3.1600000858306885,CoralReefs,Pisc
+Synodus,Synodus dermatogenys,reef-associated,24,0.00616595009341836,3.2300000190734863,CoralReefs,Pisc
+Synodus,Synodus jaculum,reef-associated,20,0.00446684006601572,3.1600000858306885,CoralReefs,Pisc
+Synodus,Synodus variegatus,reef-associated,40,0.005128609947860241,3.190000057220459,"SeaGrassBeds, CoralReefs",Pisc
+Taeniamia,Taeniamia biguttata,reef-associated,11,0.014454400166869164,3.0799999237060547,CoralReefs,Crus
+Taenianotus,Taenianotus triacanthus,reef-associated,10,0.01258930005133152,3.0299999713897705,"SeaGrassBeds, CoralReefs, DropOffs, ReefFlats, Lagoons",Crus
+Taeniura,Taeniura lymma,reef-associated,220.77999877929688,0.010715199634432793,3.109999895095825,"SeaGrassBeds, CoralReefs",NA
+Thalassoma,Thalassoma amblycephalum,reef-associated,19.520000457763672,0.009120110422372818,3.069999933242798,CoralReefs,InvMic
+Thalassoma,Thalassoma hardwicke,reef-associated,20,0.00954992976039648,3.049999952316284,CoralReefs,InvMic
+Thalassoma,Thalassoma jansenii,reef-associated,20,0.00954992976039648,3.059999942779541,"CoralReefs, ReefFlats",InvMic
+Thalassoma,Thalassoma lunare,reef-associated,45,0.0123027004301548,2.9600000381469727,"CoralReefs, Lagoons",Plank
+Thalassoma,Thalassoma lutescens,reef-associated,30,0.009772369638085365,3.059999942779541,CoralReefs,InvMac
+Thalassoma,Thalassoma purpureum,reef-associated,46,0.00954992976039648,3.059999942779541,"SeaGrassBeds, CoralReefs",InvMic
+Thalassoma,Thalassoma quinquevittatum,reef-associated,17,0.00954992976039648,3.059999942779541,CoralReefs,InvMic
+Thalassoma,Thalassoma trilobatum,reef-associated,30,0.00954992976039648,3.059999942779541,"SeaGrassBeds, CoralReefs",InvMic
+Trachinotus,Trachinotus blochii,reef-associated,122.0999984741211,0.026915300637483597,2.809999942779541,CoralReefs,Pisc
+Triaenodon,Triaenodon obesus,reef-associated,213,0.003548129927366972,3.119999885559082,CoralReefs,NA
+Tylosurus,Tylosurus crocodilus,reef-associated,150,0.0010715200332924724,3.109999895095825,"SeaGrassBeds, CoralReefs",NA
+Valenciennea,Valenciennea decora,reef-associated,13.789999961853027,0.006918310187757015,3.0999999046325684,NA,InvMic
+Valenciennea,Valenciennea strigata,reef-associated,18,0.010232900269329548,3.0199999809265137,CoralReefs,Plank
+Variola,Variola albimarginata,reef-associated,65,0.013489600270986557,3.069999933242798,CoralReefs,Pisc
+Variola,Variola louti,reef-associated,83,0.010964799672365189,3.0299999713897705,CoralReefs,Pisc
+Wetmorella,Wetmorella nigropinnata,reef-associated,8,0.02137959934771061,2.9700000286102295,CoralReefs,InvMic
+Zanclus,Zanclus cornutus,reef-associated,23,0.017378000542521477,3.059999942779541,"SeaGrassBeds, CoralReefs, ReefFlats, Lagoons",InvSes
+Zebrasoma,Zebrasoma flavescens,reef-associated,20,0.019054599106311798,2.9800000190734863,CoralReefs,Herb
+Zebrasoma,Zebrasoma scopas,reef-associated,48.79999923706055,0.024547100067138672,2.9800000190734863,CoralReefs,Herb
+Zebrasoma,Zebrasoma velifer,reef-associated,48.79999923706055,0.02511890046298504,2.930000066757202,"SeaGrassBeds, CoralReefs",Herb
