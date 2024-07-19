@@ -25,7 +25,7 @@ rm(tempdt, tempdt2)
 
 View(dt_assemblage)
 
-# CHECK DATA ------------------------------------------------------
+# CHECK + VALIDATE DATA ------------------------------------------------------
 # global taxonomy check
 
 # make a column to help with identifying uncertain records
@@ -42,8 +42,8 @@ sp <- dt_assemblage %>% filter(taxon_resolution == 'species') %>%
     pull(temp)
 
 dt_spcheck <- validate_names(sp) # check against FishBase
-View(dt_spcheck)
 dt_spcheck <- tibble(input = sp, validated = dt_spcheck)
+View(dt_spcheck)
 dt_spcheck %>% filter(is.na(validated)) %>% View
 dt_spcheck <- dt_spcheck %>% filter(validated != input)
 replace = dt_spcheck$validated
@@ -51,8 +51,26 @@ names(replace) <- dt_spcheck$input
 
 # misspelling replace
 dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')] <- str_replace(dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')], 'nigros', 'nigrofuscus')
-dt_assemblage$genus_sp <- with(dt_assemblage, paste(Genus, Species, sep = ' ')) %>%
-    str_replace_all(., replace)
+dt_assemblage %>% filter(str_detect(Genus, 'Scarini')) %>%
+    distinct(Family, Genus, Species) %>% View
+dt_assemblage$Species[dt_assemblage$Genus == 'Scarinissp8'] <- 'sp8'
+dt_assemblage$Genus[dt_assemblage$Genus == 'Scarinissp8'] <- 'Scarini'
+dt_assemblage$Species[str_which(dt_assemblage$Species, '^\\d$')] <- paste0('sp', dt_assemblage$Species[str_which(dt_assemblage$Species, '^\\d$')])
+dt_assemblage %>% distinct(Family, Genus, Species) %>% filter(is.na(Species))
+dt_assemblage$Species[is.na(dt_assemblage$Genus) == F & is.na(dt_assemblage$Species)] <- 'sp'
+dt_assemblage$Family[which(dt_assemblage$Family == 'Scaridae')] <- 'Labridae'
+dt_assemblage$Genus[which(dt_assemblage$Genus == 'Scaridae')] <- 'Scarini'
+
+# based on genus, match up with the valid family
+# ADD CODE HERE USING WORMS/TAXIZE
+
+# from FishBase validation
+dt_assemblage <- dt_assemblage %>% mutate(genus_sp = case_when(
+    is.na(Genus) & is.na(Species) ~ Family,
+    is.na(Genus) & is.na(Species) == F ~ paste(Family, Species, sep = ' '),
+    is.na(Genus) == F & is.na(Species) == F ~ paste(Genus, Species, sep = ' ')
+))
+dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, replace)
 dt_assemblage %>% filter(str_detect(genus_sp, '^NA')) %>% distinct %>% View
 dt_assemblage$genus_sp[which(dt_assemblage$taxon_resolution == 'family')] <- with(dt_assemblage[which(dt_assemblage$taxon_resolution == 'family'), ], 
     paste(Family, Species, sep = ' '))

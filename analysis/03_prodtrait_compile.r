@@ -10,24 +10,19 @@ require(rfishprod)
 require(rfishbase)
 
 
-# Compile traits ==========================================================
+# COMPILE TRAITS ==========================================================
 # load("workspace.RData")
 
 dt_prodDB <- rfishprod::db
 
-sp_gap <- dt_assemblage %>% distinct(Family, Genus, Species) %>%
-  mutate(genus_sp = case_when(is.na(Genus) == F ~ paste(Genus, Species, sep = ' ') %>%
-	str_remove(., '\\d+'), .default = NA)) %>% 
+allsp <- dt_assemblage %>% filter(taxon_resolution %in% c('genus', 'species')) %>%
+  distinct(genus_sp) %>%
+  mutate(genus_sp = str_remove(genus_sp, '\\d+')) %>% 
   # collapse known uncertains because they don't matter for productivity
-  arrange(Family, genus_sp) %>% distinct %>%
-  filter(!is.na(genus_sp)) # remove NAs
-View(sp_gap)
+  pull(genus_sp) %>% na.omit %>% unique %>% sort # remove NAs
+# View(allsp)
 
 # the input data for productivity will eventually be dt_traits
-# put everything in right now that that already exists
-dt_traits <- dt_prodDB %>% select(Species, MaxSizeTL, Diet, Position, a, b) %>%
-  filter(Species %in% sp_gap$genus_sp) %>% distinct
-
 
 # fetch traits from FishBase for species not covered
 # L-W parameters, need to scrape
@@ -37,34 +32,23 @@ dt_traits <- dt_prodDB %>% select(Species, MaxSizeTL, Diet, Position, a, b) %>%
 # SSTMean
 
 # Lmax + water column
-fishbase_traits <- sp_gap %>% 
-  filter(genus_sp %in% dt_traits == F, str_detect(genus_sp, '\\ssp$') == F) %>%
+fishbase_traits <- allsp %>% 
+# only species we don't have trait information from
+  filter(genus_sp %in% dt_prodDB$Species == F, str_detect(genus_sp, '\\ssp$') == F) %>%
   pull(genus_sp) %>% species(species_list = ., 
-  fields = c('Species', 'Length', 'LTypeMaxM', 'LengthFemale', 'LTypeMaxF', 'DemersPelag'))
+  fields = c('Species', 'Comments'))
 
 # Bayesian L-W parameters
-fishbase_traits <- sp_gap %>% 
-  filter(genus_sp %in% dt_traits == F, str_detect(genus_sp, '\\ssp$') == F) %>%
-  pull(genus_sp) %>% 
-  estimate(species_list = ., fields = c('Species', 'MaxLengthTL', 'a', 'b')) %>%
+fishbase_traits <- estimate(species_list = fishbase_traits$Species, fields = c('Species', 'MaxLengthTL', 'a', 'b')) %>%
   left_join(fishbase_traits, ., by = "Species")
-sum(is.na(fishbase_traits$MaxLengthTL))
-sum(is.na(fishbase_traits$Length))
-fishbase_traits %>% filter(LTypeMaxM != 'TL') %>% View
 
 # get habitat information to help manually generate position trait
-position <- sp_gap %>% 
-filter(genus_sp %in% fishbase_traits == F, str_detect(genus_sp, '\\ssp$') == F) %>%
-  pull(genus_sp) %>% 
-  ecology(species_list = .) %>% select(Species, Macrophyte:Driftwood, BoatHulls:HardCorals) %>%
+position <- ecology(species_list = fishbase_traits$Species) %>% select(Species, Macrophyte:Driftwood, BoatHulls:HardCorals) %>%
   tidyr::pivot_longer(., cols = Macrophyte:HardCorals, names_to = "Habitat", values_to = "YN") %>%
   filter(YN == -1)
 
 fishbase_traits <- position %>% group_by(Species) %>% summarise(Habitat = paste(Habitat, collapse = ', ')) %>%
   full_join(fishbase_traits, ., by = "Species")
-fishbase_traits$Genus <- word(fishbase_traits$Species, 1)
-rm(position)  
-fishbase_traits <- select(fishbase_traits, !(Length:LTypeMaxF)) %>% relocate(Genus, .before = Species)
 
 # Vertical position traits from GASPAR
 gaspar <- read_csv('src/gaspar_traits.csv')
@@ -73,18 +57,18 @@ replace <- c('Bnth', 'BtPl', 'Pelg')
 names(replace) <- c('Bottom', 'Low', 'High')
 gaspar$Position_v <- str_replace_all(gaspar$Level_water, replace)
 fishbase_traits <- gaspar %>% select(FullSpecies, Position_v) %>% 
-  right_join(., fishbase_traits, by = c("FullSpecies" = 'Species'))
+  rename(Species = FullSpecies) %>%
+  left_join(fishbase_traits, ., by = "Species")
 
 # use the two to get vertical and horizontal position traits
 fishbase_traits <- mutate(fishbase_traits, Position_h = case_when(
   # associated if it's not exclusively coral reefs
     str_detect(Habitat, 'seagrass|Seagrass') ~ 'As', .default = "Dw"
   )) %>% mutate(Position = paste0(Position_v, Position_h)) %>%
-  select(Species, MaxLengthTL, Position, a, b) %>%
+  select(Species, MaxLengthTL, Position, a, b, Comments) %>%
   rename(MaxSizeTL = MaxLengthTL)
 
-
-## Merge trophic guilds ==========================================================
+## MATCH UP TROPHIC GUILDS ==========================================================
 
 # Morais and Bellwood don't use the same trophic guild groupings as Parravicini
 # I'd rather predict Kmax from these groupings
@@ -95,6 +79,7 @@ dt_troph <- read.csv("src/parravicini_trophic_guilds.csv") %>%
 replace <- c('InvSes', 'Herb', 'Cor', 'Pisc', 'InvMic', 'InvMac', 'Crus', 'Plank')
 names(replace) <- as.character(1:8)
 dt_troph$Diet_Par <- str_replace_all(dt_troph$trophic_guild_predicted |> as.character(), replace)
+dt_troph <- dt_troph[-2]
 fishbase_traits <- left_join(fishbase_traits, dt_troph, by = "Species")
 rm(replace)
 
@@ -102,10 +87,10 @@ rm(replace)
 # readr::write_csv(fishbase_traits, 'src/fish_prodtraits.csv')
 
 # Make rfishprod training diet data match
-dt_prodDB %>% distinct(Species, Diet) %>% left_join(., dt_troph[-2], by = "Species") %>% View
-dt_prodDB %>% distinct(Species, Diet) %>% left_join(., dt_troph[-2], by = "Species") %>%
+dt_prodDB %>% distinct(Species, Diet) %>% left_join(., dt_troph, by = "Species") %>% View
+dt_prodDB %>% distinct(Species, Diet) %>% left_join(., dt_troph, by = "Species") %>%
   pull(Diet_Par) %>% is.na %>% sum # how many species don't have a match with Parravicini guilds
-dt_prodDB <- dt_prodDB %>% left_join(., dt_troph[-2], by = "Species")
+dt_prodDB <- dt_prodDB %>% left_join(., dt_troph, by = "Species")
 dt_prodDB %>% filter(is.na(Diet_Par)) %>% distinct(Diet)
 
 # manual matches
@@ -132,24 +117,65 @@ dt_troph <- dt_troph %>% select(!trophic_guild_predicted) %>%
 dt_prodDB <- dt_prodDB %>% select(!c(Diet_Par, Diet)) %>% left_join(., dt_troph, by = "Species") %>%
   filter(is.na(Diet_Par) == F)
 summary(dt_prodDB)
+dt_prodDB <- rename(dt_prodDB, Diet = Diet_Par)
 
 # restash the species that have complete compiled traits
-dt_traits <- dt_prodDB %>% rename(Diet = Diet_Par) %>%
-select(Species, MaxSizeTL, Diet, Position, a, b) %>%
-  filter(Species %in% sp_gap$genus_sp) %>% distinct
+dt_traits <- dt_prodDB %>% select(Species, MaxSizeTL, Diet, Position, a, b) %>%
+  filter(Species %in% allsp$genus_sp) %>% arrange(Species, desc(MaxSizeTL), Position) %>%
+  ungroup %>% group_by(Species) %>% mutate(order = 1:n()) %>%
+  filter(order == 1) %>% select(!order) %>% ungroup
 
-# Compile SST ==========================================================
+rm(gaspar, dt_prodDB_sp_troph)
+
+## REMERGE ====================================================================
+
+fishbase_traits <- readr::read_csv('src/fish_prodtraits.csv')
+
+# check if there's any overlap with dt_traits from the Morais database
+fishbase_traits %>% filter(Species %in% dt_traits$Species) %>% nrow
+dt_traits %>% filter(Species %in% fishbase_traits$Species) %>% nrow
+dt_traits <- dt_traits %>% filter(Species %in% fishbase_traits$Species == F) %>% # ensure no duplicates
+  bind_rows(., fishbase_traits) %>%
+  arrange(Species)
+
+## GENUS LEVEL TRAITS =================================================
+# are they worth keeping
+# dt_rareass %>% filter(iter == 1, str_detect(genus_sp, '\\ssp\\d*$')) %>%
+#  group_by(genus_sp) %>% summarise(sumN = sum(Abundance)) %>% View
+# yes
+
+# update species gap
+genus <- allsp %>% filter(!genus_sp %in% dt_traits$Species) %>% pull(Genus)
+# take the genus mean for these traits?
+traits_genus <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
+  filter(Genus %in% genus) %>% select(Genus, MaxSizeTL, a, b) %>%
+  group_by(Genus) %>% 
+  summarise(MaxSizeTL = mean(MaxSizeTL), a = mean(a), b = mean(b))
+
+# frequency based matching for categorical
+diet <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
+  filter(Genus %in% genus) %>% ungroup %>% select(Genus, Diet) %>%
+  group_by_all %>% summarise(freq = n()) %>% arrange(Genus, desc(freq)) %>%
+  mutate(order = 1:n())
+
+position <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
+  filter(Genus %in% genus) %>% ungroup %>% select(Genus, Position) %>%
+  group_by_all %>% summarise(freq = n()) %>% arrange(Genus, desc(freq)) %>%
+  mutate(order = 1:n())
+
+diet <- diet %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
+position <- position %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
+traits_genus <- left_join(traits_genus, diet, by = 'Genus') %>%
+  left_join(., position, by = "Genus") %>%
+  mutate(Species = paste0(Genus, ' sp'))
+rm(diet, position, genus)
+
+dt_traits <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
+  bind_rows(., traits_genus) %>% arrange(Species)
+View(dt_traits)
+
+allsp[which(allsp %in% dt_traits$Species == F)]
+
+# COMPILE SST ================================================================
 
 years <- unique(dt_assemblage$Year)
-
-# Estimate Kmax ==========================================================
-# estimate VGBF Kmax
-# input trait data
-# dataset = reference data to train
-
-# Formula from Morais and Bellwood (2018)
-fmod <- formula(~ sstmean + MaxSizeTL + Diet + Position + Method)
-dt_kmax <- predKmax(repdata, dataset = db,
-                   fmod = fmod, niter = iter,
-                   return = 'pred')
-
