@@ -6,13 +6,15 @@
 # SET UP ---------------------------------------------------------
 require(dplyr)
 require(stringr)
-require(sf)
 require(readr)
+require(rfishbase)
+require(taxize)
 require(ggplot2)
+require(sf)
 require(rnaturalearth)
 require(dggridR)
-require(rfishbase)
 require(beepr)
+
 
 # global parameters
 G = 0.04 # grid cell size in sq km
@@ -49,7 +51,7 @@ dt_spcheck <- dt_spcheck %>% filter(validated != input)
 replace = dt_spcheck$validated
 names(replace) <- dt_spcheck$input
 
-# misspelling replace
+# manual uncertain misspelling replace
 dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')] <- str_replace(dt_assemblage$Species[str_which(dt_assemblage$Genus, 'Acanthurus')], 'nigros', 'nigrofuscus')
 dt_assemblage %>% filter(str_detect(Genus, 'Scarini')) %>%
     distinct(Family, Genus, Species) %>% View
@@ -61,9 +63,6 @@ dt_assemblage$Species[is.na(dt_assemblage$Genus) == F & is.na(dt_assemblage$Spec
 dt_assemblage$Family[which(dt_assemblage$Family == 'Scaridae')] <- 'Labridae'
 dt_assemblage$Genus[which(dt_assemblage$Genus == 'Scaridae')] <- 'Scarini'
 
-# based on genus, match up with the valid family
-# ADD CODE HERE USING WORMS/TAXIZE
-
 # from FishBase validation
 dt_assemblage <- dt_assemblage %>% mutate(genus_sp = case_when(
     is.na(Genus) & is.na(Species) ~ Family,
@@ -72,23 +71,75 @@ dt_assemblage <- dt_assemblage %>% mutate(genus_sp = case_when(
 ))
 dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, replace)
 dt_assemblage %>% filter(str_detect(genus_sp, '^NA')) %>% distinct %>% View
-dt_assemblage$genus_sp[which(dt_assemblage$taxon_resolution == 'family')] <- with(dt_assemblage[which(dt_assemblage$taxon_resolution == 'family'), ], 
-    paste(Family, Species, sep = ' '))
 unique(dt_assemblage$genus_sp)
 
-dt_assemblage %>% distinct(Family, Genus, Species) %>%
-    arrange(Family, Genus, Species )%>% View
+dt_assemblage %>% distinct(Family, Genus, Species, genus_sp) %>%
+    arrange(Family, Genus, Species) %>% View
 dt_assemblage %>% distinct(Genus, Species) %>% 
     filter(str_detect(Genus, 'idae'))
 
 dt_assemblage %>% filter(is.na(Family)) %>% distinct(Family, genus_sp)
-dt_assemblage$Family[which(is.na(dt_assemblage$Family) & dt_assemblage$genus_sp == 'Azurina lepidolepis')] <- 'Pomacentridae'
-dt_assemblage$Family[which(is.na(dt_assemblage$Family) & dt_assemblage$genus_sp == 'Macropharyngodon sp')] <- 'Labridae'
 dt_assemblage <- filter(dt_assemblage, genus_sp != 'Teleostei unidentified') # omit
+# take the validated names and resplit to fix the Genus and Species column
+dt_assemblage <- mutate(dt_assemblage, Genus2 = case_when(str_detect(word(genus_sp, 1), 'idae$') ~ NA,
+    .default = word(genus_sp, 1)), 
+    # family level IDs should be NA in Species, unless it's Scarini or a known uncertain
+    Species2 = case_when(is.na(word(genus_sp, 2)) == F ~ word(genus_sp, 2), .default = NA))
+
+dt_assemblage %>% distinct(Family, Genus, Species, Genus2, Species2) %>%
+    filter(Species2 != Species | Genus2 != Genus) %>%
+    arrange(Family, Genus2, Species2) %>% View
+dt_assemblage %>% distinct(Family, Genus, Species, Genus2, Species2) %>%
+    filter(str_detect(Species, '\\d$|sp$')) %>%
+    arrange(Family, Genus2, Species2) %>% View # check if the uncertainty information is preserved;
+
+# looks ok. replace
+dt_assemblage <- dt_assemblage %>% select(!c(Genus, Species)) %>% 
+    rename(Genus = Genus2, Species = Species2)
 
 rm(sp, dt_spcheck, replace)
 
-# GRID DATA -------------------------------------------------------
+## VALIDATE GENUS/FAMILY -------------------------------------------------------
+
+# use taxize to interact with worms API better
+gen <- dt_assemblage$Genus |> unique() |> sort() |> na.omit()
+gen <- gen[-which(gen == 'Scarini')]
+family <- classification(gen, db = 'worms', rows = 1) # only consider the top result
+
+# tibblize
+for(i in 1:length(family)) {
+    # error handling
+    try <- tryCatch(
+        tidyr::pivot_wider(family[[i]][-3], names_from = rank, values_from = name) %>%
+            select(contains("amily"), Genus),
+        error = function(e) e
+    )
+    # move on if it doesn't work
+    if(inherits(try, "error")) next 
+
+    if (exists('family2')){
+        family2 <- tidyr::pivot_wider(family[[i]][-3], names_from = rank, values_from = name) %>%
+        select(contains("amily"), Genus) %>% bind_rows(family2, .)
+    } else {
+        family2 <- tidyr::pivot_wider(family[[i]][-3], names_from = rank, values_from = name) %>%
+        select(contains("amily"), Genus)
+    }
+}
+family2 <- family2 %>% distinct(Family, Subfamily, Genus) %>%
+     arrange(Family, Subfamily, Genus)
+family2 <- tibble(Family = 'Labridae', Genus = 'Scarini') %>% bind_rows(family2, .)
+family2$Family[family2$Family == 'Scaridae'] <- 'Labridae' # outdated!
+# technically wrong but Scarini needs to be in Genus for some
+
+dt_assemblage <- family2 %>% rename(Family2 = Family) %>% select(!Subfamily) %>% left_join(dt_assemblage, ., by = "Genus")
+dt_assemblage %>% filter(is.na(Family2), is.na(Genus) == F) %>% distinct(Family, Genus, Family2) %>% View
+dt_assemblage %>% distinct(Family, Family2, Genus, genus_sp) %>% View
+dt_assemblage$Genus[dt_assemblage$Genus == 'Perciformes'] <- NA
+rm(gen, family2, family, try, i)
+dt_assemblage$Family2[is.na(dt_assemblage$Genus) & is.na(dt_assemblage$Family2)] <- dt_assemblage$Family[is.na(dt_assemblage$Genus) & is.na(dt_assemblage$Family2)]
+dt_assemblage <- dt_assemblage %>% select(!Family) %>% rename(Family = Family2)
+
+# GRID DATA --------------------------------------------------------------------
 # not all datasets use permanent locations
 # there is no way to determine time-series based on coordinates with multiple sampling regimes
 # so we need to grid by a reasonable resolution
