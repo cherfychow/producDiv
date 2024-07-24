@@ -32,10 +32,7 @@ allsp <- dt_assemblage %>% filter(taxon_resolution %in% c('genus', 'species')) %
 # SSTMean
 
 # Lmax + water column
-fishbase_traits <- allsp %>% 
-# only species we don't have trait information from
-  filter(genus_sp %in% dt_prodDB$Species == F, str_detect(genus_sp, '\\ssp$') == F) %>%
-  pull(genus_sp) %>% species(species_list = ., 
+fishbase_traits <- species(species_list = allsp[-str_which(allsp, '\\ssp$')], 
   fields = c('Species', 'Comments'))
 
 # Bayesian L-W parameters
@@ -111,8 +108,7 @@ rm(db_sp_troph)
 # readr::write_csv(dt_prodDB_sp_troph, 'src/missing_troph_sp.csv')
 dt_prodDB_sp_troph <- readr::read_csv('src/missing_troph_sp.csv') # read back in
 # merge in the manual records
-dt_troph <- dt_troph %>% select(!trophic_guild_predicted) %>%
-  bind_rows(., dt_prodDB_sp_troph)
+dt_troph <- bind_rows(dt_troph, dt_prodDB_sp_troph)
 # rejoin
 dt_prodDB <- dt_prodDB %>% select(!c(Diet_Par, Diet)) %>% left_join(., dt_troph, by = "Species") %>%
   filter(is.na(Diet_Par) == F)
@@ -121,7 +117,7 @@ dt_prodDB <- rename(dt_prodDB, Diet = Diet_Par)
 
 # restash the species that have complete compiled traits
 dt_traits <- dt_prodDB %>% select(Species, MaxSizeTL, Diet, Position, a, b) %>%
-  filter(Species %in% allsp$genus_sp) %>% arrange(Species, desc(MaxSizeTL), Position) %>%
+  filter(Species %in% allsp) %>% arrange(Species, desc(MaxSizeTL), Position) %>%
   ungroup %>% group_by(Species) %>% mutate(order = 1:n()) %>%
   filter(order == 1) %>% select(!order) %>% ungroup
 
@@ -138,6 +134,7 @@ dt_traits <- dt_traits %>% filter(Species %in% fishbase_traits$Species == F) %>%
   bind_rows(., fishbase_traits) %>%
   arrange(Species)
 
+
 ## GENUS LEVEL TRAITS =================================================
 # are they worth keeping
 # dt_rareass %>% filter(iter == 1, str_detect(genus_sp, '\\ssp\\d*$')) %>%
@@ -145,7 +142,7 @@ dt_traits <- dt_traits %>% filter(Species %in% fishbase_traits$Species == F) %>%
 # yes
 
 # update species gap
-genus <- allsp %>% filter(!genus_sp %in% dt_traits$Species) %>% pull(Genus)
+genus <- allsp[allsp %in% dt_traits$Species == F] |> word(1)
 # take the genus mean for these traits?
 traits_genus <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
   filter(Genus %in% genus) %>% select(Genus, MaxSizeTL, a, b) %>%
@@ -174,8 +171,10 @@ dt_traits <- dt_traits %>% mutate(Genus = word(Species, 1)) %>%
   bind_rows(., traits_genus) %>% arrange(Species)
 View(dt_traits)
 
-allsp[which(allsp %in% dt_traits$Species == F)]
+allsp[-which(allsp %in% dt_traits$Species)] # manual uncertain compiles
+allsp[-which(allsp %in% dt_traits$Species)]  %>% clipr::write_clip(.)
+rm(traits_genus)
+dt_traits <- read_csv('./src/missing_traits_genus.csv') %>% bind_rows(dt_traits, .)
 
 # COMPILE SST ================================================================
 
-years <- unique(dt_assemblage$Year)

@@ -22,6 +22,8 @@ dt_div <- dt_rareass %>% filter(iter >= 1, iter <= 5) %>%
 
 head(dt_div)
 
+# delete this for a full run
+iter = 1
 # asymptotic species richness
 # not quite sure how to integrate iterative dataset in this yet
 for (i in 1:iter) { # up to iteration 5 for now

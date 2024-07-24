@@ -236,7 +236,6 @@ for (D in 1:n_distinct(dt_assemblage$DataID)) {
     }
 }
 
-
 # number of resampling iterations
 # creates sub datasets
 dt_rareass$iter <- 1 # if you choose to do multiple resampling iterations
@@ -256,7 +255,6 @@ for (D in 1:n_distinct(dt_assemblage$DataID)) {
         group_by(gridcell, Year) %>% sample_n(rN, replace = FALSE) %>%
         pull(SamplingEventID)
 
-        # check if the new object exists yet
         dt_rareass <- dt_assemblage %>% 
             filter(DataID == dataid, SamplingEventID %in% events) %>%
             mutate(iter = i+1) %>% bind_rows(dt_rareass, .) # name the iteration
@@ -271,6 +269,8 @@ dt_rareass$rareID <- with(dt_rareass, paste(DataID, gridcell, sep = "_"))
 
 # DATA CHECKS -----------------------------------------------------------
 # check the rarefied, gridded time series
+sum(is.na(dt_rareass$gridcell))
+sum(str_detect(dt_rareass$rareID, 'NA$'))
 
 summary(dt_rareass)
 # time series durations
@@ -289,3 +289,5 @@ dt_rareass %>% group_by(rareID, Year) %>%
     consistent = case_when(min_samp == max_samp ~ 'Y', 
                            min_samp != max_samp ~ 'N')) %>%
     filter(consistent == 'N') # any rarefaction failures
+
+detach(package:taxize)
