@@ -96,19 +96,19 @@ dt_prodDB$Diet_Par[is.na(dt_prodDB$Diet_Par) & dt_prodDB$Diet == 'FisCep'] <- 'P
 dt_prodDB$Diet_Par[is.na(dt_prodDB$Diet_Par) & dt_prodDB$Diet == 'Plktiv'] <- 'Plank'
 dt_prodDB$Diet_Par[is.na(dt_prodDB$Diet_Par) & dt_prodDB$Diet == 'FisCep'] <- 'Pisc'
 # can't resolve invertivores like this
-dt_prodDB_sp_troph <- dt_prodDB %>% filter(is.na(Diet_Par)) %>% pull(Species)
+db_sp_troph <- dt_prodDB %>% filter(is.na(Diet_Par)) %>% pull(Species)
 # worth manual matching? yes, about > 20% of training data
 dt_prodDB %>% group_by(Diet) %>% summarise(n())
-length(dt_prodDB_sp_troph)
-dt_prodDB_sp_troph <- fooditems(species_list = dt_prodDB_sp_troph)
-View(dt_prodDB_sp_troph)
+length(db_sp_troph)
+db_sp_troph <- fooditems(species_list = db_sp_troph)
+View(db_sp_troph)
 rm(db_sp_troph)
 
 # have to do it manually off-code
-# readr::write_csv(dt_prodDB_sp_troph, 'src/missing_troph_sp.csv')
-dt_prodDB_sp_troph <- readr::read_csv('src/missing_troph_sp.csv') # read back in
+# readr::write_csv(db_sp_troph, 'src/missing_troph_sp.csv')
+db_sp_troph <- readr::read_csv('src/missing_troph_sp.csv') # read back in
 # merge in the manual records
-dt_troph <- bind_rows(dt_troph, dt_prodDB_sp_troph)
+dt_troph <- bind_rows(dt_troph, db_sp_troph)
 # rejoin
 dt_prodDB <- dt_prodDB %>% select(!c(Diet_Par, Diet)) %>% left_join(., dt_troph, by = "Species") %>%
   filter(is.na(Diet_Par) == F)
@@ -121,7 +121,7 @@ dt_traits <- dt_prodDB %>% select(Species, MaxSizeTL, Diet, Position, a, b) %>%
   ungroup %>% group_by(Species) %>% mutate(order = 1:n()) %>%
   filter(order == 1) %>% select(!order) %>% ungroup
 
-rm(gaspar, dt_prodDB_sp_troph)
+rm(gaspar, db_sp_troph)
 
 ## REMERGE ====================================================================
 
@@ -172,9 +172,10 @@ dt_traits <- dt_traits %>% mutate(Genus = word(Species, 1)) %>%
 View(dt_traits)
 
 allsp[-which(allsp %in% dt_traits$Species)] # manual uncertain compiles
-allsp[-which(allsp %in% dt_traits$Species)]  %>% clipr::write_clip(.)
+# allsp[-which(allsp %in% dt_traits$Species)]  %>% clipr::write_clip(.)
 rm(traits_genus)
 dt_traits <- read_csv('./src/missing_traits_genus.csv') %>% bind_rows(dt_traits, .)
+rm(fishbase_traits)
 
 # COMPILE SST ================================================================
 
