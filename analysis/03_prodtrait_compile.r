@@ -1,11 +1,10 @@
 
 # ProducDiv
-# Calculate productivity
+# Compile traits for productivity modelling
 
 require(dplyr)
 require(readr)
 require(stringr)
-require(sf)
 require(rfishprod)
 require(rfishbase)
 
@@ -176,6 +175,3 @@ allsp[-which(allsp %in% dt_traits$Species)] # manual uncertain compiles
 rm(traits_genus)
 dt_traits <- read_csv('./src/missing_traits_genus.csv') %>% bind_rows(dt_traits, .)
 rm(fishbase_traits)
-
-# COMPILE SST ================================================================
-
