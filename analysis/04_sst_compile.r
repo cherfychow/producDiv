@@ -1,180 +1,80 @@
 
 # ProducDiv
-# Compile historic SST data that matches fish data
+# Compile historic OISST data that matches fish data
 
 require(dplyr)
 require(sf)
 require(lubridate)
 require(tidync) # for netCDF
-require(httr) # for fetching NOAA files over FTP
 
 # https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html
 
 summary(dt_assemblage)
 # monthly resolution best for data
 
+# EXTRACT OISST DATA ================================================================
 
-# DOWNLOAD NOAA OISST ================================================================
+OISST <- tidync::tidync('./src/noaa_oisst_v2_monthly.nc')
+# filter by convex hull and time
 
-oisst <- tidync::tidync('./src/noaa_oisst_v2_monthly.nc')
-oisst2 <- ncdf4::nc_open('./src/noaa_oisst_v2_monthly.nc')
+convhull <- dt_coord %>% st_as_sf(coords = c('Longitude', 'Latitude'), crs = 4326) %>% 
+  ungroup %>% st_union %>% st_convex_hull %>% st_coordinates %>% .[,1:2] %>%
+  as.data.frame
 
-# adapted from code by Luke Miller
-# https://github.com/millerlp/Misc_R_scripts/blob/main/NOAA_OISST_ncdf4.R
+# Generate set of grid cell latitudes (center of cell) from south to north
+lats = seq(-89.875,89.875,0.25)
+# Generate set of grid cell longitudes (center of cell)
+lons = seq(0.125,359.875,0.25)
 
-extractOISSTdaily = function(oisst,lsmask,lonW,lonE,latS,latN, date1, date2){
-  
-  # Inputs
-  # oisst: object name for an imported OISST netcdf object
-  # lsmask: full path to land-sea mask NetCDF file
-  # lonW: western-most longitude of search area, must be smaller than lonE
-  # lonE: eastern-most longitude of search area, must be larger than lonW
-  # latS: southern-most latitude of search area, must be smaller than latN
-  # latN: northern-most latitude of search area, must be larger than latS
-  # date1: first date in file to extract, must be Date class
-  # date2: last date in file to extract, must be Date class
-  # lonE, latN, date2 are optional. 
-  
-  # Output
-  # A 3-dimensional array with latitudes in rows, longitudes in columns, and
-  # dates along the 3rd dimension. The value [1,1,1] is the northernmost, 
-  # westernmost lat/long location on the 1st date. The value [1,1,2] is the
-  # 2nd date at the same lat/long location (if more than 1 date is requested).
-  # To extract lat/lon/date values from the output array, use the 
-  # dimnames() function:
-  # lats = as.numeric(dimnames(sst2)$Lat)
-  # longs = as.numeric(dimnames(sst2)$Long)
-  # dates = as.Date(dimnames(sst2)$Date)
+# generate coordinates that match the closest OISST grid centre
+dt_coord <- dt_coord %>%
+  mutate(sst_latgrid = lats[max.col(-abs(outer(Latitude,lats,"-")))],
+         sst_lon = case_when(Longitude < 0 ~ Longitude + 360, .default = Longitude),
+         sst_longrid = lons[max.col(-abs(outer(sst_lon,lons,"-")))])
+dt_coord$sst_lon <- NULL # remove it since it was just an intermediate
+# dt_coord will link which gridcell links to which OISST grid
 
-  
-  # Generate set of grid cell latitudes (center of cell) from south to north
-  lats = seq(-89.875,89.875,0.25)
-  # Generate set of grid cell longitudes (center of cell)
-  lons = seq(0.125,359.875,0.25) 
-  # Create connection to NetCDF data file
-  nc = nc_open(fname)
-  
-  lonWindx = which.min(abs(lonW - lons)) #get index of nearest longitude value
-  if (missing(lonE)){
-    # If lonE isn't specified, reused lon1
-    lonE = lonW
-    lonEindx = lonWindx
-    cat("Only 1 longitude specified\n")
-  } else {
-    # Get index of nearest longitude value to lonE
-    lonEindx = which.min(abs(lonE - lons)) 	
-  }
-  latSindx = which.min(abs(latS - lats)) #get index of nearest latitude value
-  if (missing(latN)){
-    # If latN is not specified, reuse latS
-    latN = latS
-    latNindx = latSindx
-    cat("Only 1 latitude specified\n")
-  } else {
-    # Get index of nearest latitude value to latN
-    latNindx = which.min(abs(latN - lats)) 	
-  }
-  
-  # The lon/lat indx values should now correspond to indices in the NetCDF 
-  # file for the desired grid cell. 
-  nlon = (lonEindx - lonWindx) + 1 # get number of longitudes to extract
-  nlat = (latNindx - latSindx) + 1 # get number of latitudes to extract
-  
-  # Extract available dates from netCDF file
-  ncdates = nc$dim$time$vals
-  ncdates = as.Date(ncdates,origin = '1800-1-1') #available time points in nc
-  
-  if (class(date1) == 'Date'){
-    # Get index of nearest time point
-    date1indx = which.min(abs(date1 - ncdates)) 	
-  } else if (class(date1) == 'character'){
-    # Convert to a Date object first
-    date1 = as.Date(date1)
-    date1indx = which.min(abs(date1 - ncdates)) 
-  }
-  if (missing(date2)) {
-    # If date2 isn't specified, reuse date1
-    date2indx = which.min(abs(date1 - ncdates)) 
-    cat('Only 1 date specified\n')
-  } else {
-    if (class(date2) == 'Date'){
-      # If date2 exists, get index of nearest time point to date2
-      date2indx = which.min(abs(date2 - ncdates)) 		
-    } else if (class(date2) == 'character'){
-      date2 = as.Date(date2)
-      date2indx = which.min(abs(date2 - ncdates))
-    }
-  }
-  
-  ndates = (date2indx - date1indx) + 1 #get number of time steps to extract
-  
-  # Define the output array
-  sstout = array(data = NA, dim = c(nlon,nlat,ndates))
-  # Extract the data from the NetCDF file
-  sstout[,,] = ncvar_get(nc, varid = 'sst', 
-                         start = c(lonWindx,latSindx,date1indx),
-                         count = c(nlon,nlat,ndates))
-  # The output array sstout will be arranged with longitudes in rows, 
-  # increasing in an easterly direction as you move down a row (larger 
-  # longitude values), and latitudes in columns, increasing in latitude (more 
-  # northerly) as you move across columns. The 3rd dimension represents 
-  # different dates. This arrangement stems from how the data are set up in 
-  # the NetCDF file, so my apologies if it's counterintuitive. 
-  
-  # If there are missing data in the NetCDF, they should appear as 32767. 
-  # Replace that value with NA if it occurs anywhere.
-  sstout = ifelse(sstout == 32767, NA, sstout)
-  
-  # The NOAA OISST files contain sea surface temperatures for the entire 
-  # globe, including on the continents. This clearly isn't right, so they also
-  # supply a land-sea mask file in netCDF format. We use the values (0 or 1) 
-  # stored in the mask file to turn all of the continent areas into NA's. 
-  # Open the land-sea mask
-  nc2 = nc_open(lsmask) 
-  # Create array to hold land-sea mask
-  mask = array(data = NA, dim = c(nlon,nlat,1))
-  # Get land-sea mask values (0 or 1)
-  mask[,,] = ncvar_get(nc2, varid = "lsmask", 
-                       start = c(lonWindx,latSindx,1), count = c(nlon,nlat,1)) 
-  # Replace 0's with NA's
-  mask = ifelse(mask == 0,NA,1) 
-  
-  # Get dimensions of sstout array
-  dims = dim(sstout) 
-  for (i in 1:dims[3]){
-    sstout[,,i] = sstout[,,i] * mask[,,1] # All masked values become NA
-    # Add dimension names
-    attr(sstout,'dimnames') = list(Long = seq(lons[lonWindx],lons[lonEindx],
-                                              by = 0.25),
-                                   Lat = seq(lats[latSindx],lats[latNindx], 
-                                             by = 0.25),
-                                   Date = as.character(seq(ncdates[date1indx],
-                                                           ncdates[date2indx],by = 1)))
-  }
-  # sstout now has dimension names that show the longitude and latitude of
-  # each point in the array, as well as the date (3rd dimension of the array).
-  ############################################################################
-  # Rearrange the output matrix or array so that latitudes run from north to
-  # south down the rows, and longitudes run from west to east across columns.
-  dims = dim(sstout) # get size of array
-  # Make new output array to hold rearranged data. The dimension names will
-  # match the newly rearranged latitude and longitude values
-  sst2 = array(data = NA, dim = c(dims[2],dims[1],dims[3]),
-               dimnames = list(Lat = rev(seq(lats[latSindx],lats[latNindx], 
-                                             by = 0.25)),
-                               Long = seq(lons[lonWindx],lons[lonEindx],by = 0.25),
-                               Date = as.character(seq(ncdates[date1indx],
-                                                       ncdates[date2indx],by = 1))))
-  # Step through each page of array and rearrange lat/lon values
-  for (i in 1:dims[3]){
-    # Extract one day's worth of lat/lon pairs
-    temp = as.matrix(sstout[,,i])
-    temp = t(temp) # transpose lon/lat to lat/lon
-    temp = temp[nrow(temp):1,] # reverse row order to reverse latitudes
-    sst2[,,i] = temp # write data to sst2 array
-  }	
-  
-  ##########################
-  sst2 # return sst2 array
-  ##########################
-} # end of function 
+# use dataset gridcells as the linking ID
+dt_sst <- dt_coord %>% distinct(gridcell, sst_latgrid, sst_longrid)
+
+# time ranges for each gridcell
+dt_sst <- dt_assemblage %>% group_by(gridcell) %>% 
+  distinct(Year, Month, gridcell) %>%
+  mutate(date = paste(Year, Month, '01', sep = '-') |> as.Date()) %>%
+  summarise(date_min = min(date), date_max = max(date)) %>% 
+  left_join(dt_sst, ., by = "gridcell")
+
+# spatial filter
+# this is not computationally efficient for the full dataset without the server
+OISST <- OISST %>% 
+  hyper_filter(lon = lon %in% dt_sst$sst_longrid,
+               lat = lat %in% dt_sst$sst_latgrid, # targeted spatial filter
+               time >= min(dt_sst$date_min), # coarse time filter
+               time <= max(dt_sst$date_max)) %>% 
+  tidync::hyper_tibble() %>% 
+  dplyr::select(lon, lat, time, sst) %>% 
+  dplyr::mutate(date = as.Date(time, origin = "1800-1-1"))
+
+# because we used this per coordinate spatial filter
+# we shouldn't need to use the land mask data
+
+# time filter
+dt_sst <- dt_sst %>% select(!gridcell) %>% distinct %>% 
+  group_by(sst_latgrid, sst_longrid) %>% 
+  summarise(date_min = min(date_min), date_max = max(date_max)) %>% 
+# get the ranges for the courser sst grid
+  left_join(OISST, ., by = c("lat" = 'sst_latgrid', 'lon' = 'sst_longrid')) %>% 
+  select(!time) %>% group_by(lat, lon) %>%
+  filter(date >= date_min, date <= date_max)
+
+dt_sst <- dt_sst %>% select(!c(date_min, date_max)) %>% 
+  mutate(Year = year(date), Month = month(date))
+
+# MERGE SITE WITH SST ================================================================
+
+dt_coord
+
+dt_assemblage %>% distinct(DataID, gridcell, Year, Month) %>%
+  left_join(., dt_coord, by = c('DataID', 'gridcell')) %>% 
+  rename(lat = sst_latgrid, lon = sst_longrid) %>% head
+  left_join(., dt_sst[-4], by = c(''))
