@@ -6,6 +6,8 @@ require(dplyr)
 require(sf)
 require(lubridate)
 require(tidync) # for netCDF
+require(rnaturalearth)
+require(ggplot2)
 
 # https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html
 
@@ -46,35 +48,48 @@ dt_sst <- dt_assemblage %>% group_by(gridcell) %>%
 
 # spatial filter
 # this is not computationally efficient for the full dataset without the server
+# only coarse filters or else something goes wrong
 OISST <- OISST %>% 
-  hyper_filter(lon = lon %in% dt_sst$sst_longrid,
-               lat = lat %in% dt_sst$sst_latgrid, # targeted spatial filter
-               time >= min(dt_sst$date_min), # coarse time filter
-               time <= max(dt_sst$date_max)) %>% 
-  tidync::hyper_tibble() %>% 
+  hyper_filter(lon = lon >= min(dt_sst$sst_longrid) & lon <= max(dt_sst$sst_longrid), # targeted spatial filter
+               lat = lat >= min(dt_sst$sst_latgrid) & lat <= max(dt_sst$sst_latgrid)) %>% 
+  tidync::hyper_tibble() %>% # output as tibble
   dplyr::select(lon, lat, time, sst) %>% 
-  dplyr::mutate(date = as.Date(time, origin = "1800-1-1"))
+  arrange(lat, lon, time)
+OISST$date <- as.Date(OISST$time, origin = "1800/01/01")
+# double check that it starts with 1981-09-01!
+
+# fine filters
+OISST <- OISST %>% 
+  filter(lon %in% dt_sst$sst_longrid, lat %in% dt_sst$sst_latgrid,
+         date >= min(dt_sst$date_min), date <= max(dt_sst$date_max)) %>% 
+  # some rearranging
+  arrange(lat, lon, date) %>% select(!time) %>%
+  # extract year and month to help match with our data
+  mutate(Year = year(date), Month = month(date))
 
 # because we used this per coordinate spatial filter
 # we shouldn't need to use the land mask data
 
-# time filter
-dt_sst <- dt_sst %>% select(!gridcell) %>% distinct %>% 
-  group_by(sst_latgrid, sst_longrid) %>% 
-  summarise(date_min = min(date_min), date_max = max(date_max)) %>% 
-# get the ranges for the courser sst grid
-  left_join(OISST, ., by = c("lat" = 'sst_latgrid', 'lon' = 'sst_longrid')) %>% 
-  select(!time) %>% group_by(lat, lon) %>%
-  filter(date >= date_min, date <= date_max)
+# now set up dt_sst to contain our dataset site information * SST layer
 
-dt_sst <- dt_sst %>% select(!c(date_min, date_max)) %>% 
-  mutate(Year = year(date), Month = month(date))
+dt_sst <- dt_sst %>% select(!c(date_min, date_max))
 
 # MERGE SITE WITH SST ================================================================
 
-dt_coord
+dt_sst <- dt_assemblage %>% distinct(DataID, gridcell, Year, Month) %>%
+  # make sure there won't be many-to-many matches
+  left_join(., dt_sst, by = 'gridcell') %>%
+  # matches up each gridcell to the SST grid centroid
+  # essentially magnifies dt_coord by time
+  left_join(., OISST[-4], by = c('sst_latgrid' = 'lat', 'sst_longrid' = 'lon',
+                                 'Year', 'Month')) %>%
+  arrange(gridcell, Year, Month)
 
-dt_assemblage %>% distinct(DataID, gridcell, Year, Month) %>%
-  left_join(., dt_coord, by = c('DataID', 'gridcell')) %>% 
-  rename(lat = sst_latgrid, lon = sst_longrid) %>% head
-  left_join(., dt_sst[-4], by = c(''))
+# visualise to check
+
+ggplot() +
+  geom_tile(data = dt_sst, aes(x = sst_longrid, y = sst_latgrid, fill = sst)) +
+  theme_minimal() + guides(fill = 'none') +
+  scale_fill_viridis_c(option = 'C')
+
+rm(OISST, lats, lons)
