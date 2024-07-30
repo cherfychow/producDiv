@@ -92,4 +92,4 @@ ggplot() +
   theme_minimal() + guides(fill = 'none') +
   scale_fill_viridis_c(option = 'C')
 
-rm(OISST, lats, lons)
+rm(OISST, lats, lons, convhull)

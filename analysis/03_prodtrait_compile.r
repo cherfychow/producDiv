@@ -175,3 +175,42 @@ allsp[-which(allsp %in% dt_traits$Species)] # manual uncertain compiles
 rm(traits_genus)
 dt_traits <- read_csv('./src/missing_traits_genus.csv') %>% bind_rows(dt_traits, .)
 rm(fishbase_traits)
+
+## FAMILY LEVEL TRAITS =================================================
+
+family <- sort(unique(dt_assemblage$genus_sp)) %>% str_remove(., '\\d') %>% 
+  unique
+family <- family[-which(family %in% dt_traits$Species)] %>% word(., 1) %>% unique
+
+traits_family <- dt_assemblage %>% distinct(Family, Genus) %>% 
+  left_join(dt_traits, ., by = "Genus") %>% 
+  filter(Family %in% family) %>% select(Family, MaxSizeTL, a, b) %>%
+  group_by(Family) %>% 
+  summarise(MaxSizeTL = mean(MaxSizeTL), a = mean(a), b = mean(b))
+
+# frequency based matching for categorical
+diet <- dt_assemblage %>% distinct(Family, Genus) %>% 
+  left_join(dt_traits, ., by = "Genus") %>% 
+  filter(Family %in% family) %>% ungroup %>% select(Family, Diet) %>%
+  group_by_all %>% summarise(freq = n()) %>% arrange(Family, desc(freq)) %>%
+  mutate(order = 1:n())
+
+position <- dt_assemblage %>% distinct(Family, Genus) %>% 
+  left_join(dt_traits, ., by = "Genus") %>% 
+  filter(Family %in% family) %>% ungroup %>% select(Family, Position) %>%
+  group_by_all %>% summarise(freq = n()) %>% arrange(Family, desc(freq)) %>%
+  mutate(order = 1:n())
+
+diet <- diet %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
+position <- position %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
+
+traits_family <- left_join(traits_family, diet, by = 'Family') %>%
+  left_join(., position, by = "Family")
+
+traits_family$Species <- traits_family$Family
+
+dt_traits <- dt_assemblage %>% distinct(Family, Genus) %>% 
+  left_join(dt_traits, ., by = "Genus") %>% bind_rows(., traits_family)
+
+rm(traits_family, family, diet, position)
+
