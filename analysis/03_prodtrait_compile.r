@@ -214,3 +214,4 @@ dt_traits <- dt_assemblage %>% distinct(Family, Genus) %>%
 
 rm(traits_family, family, diet, position)
 
+# readr::write_csv(dt_traits, './src/traits_final.csv')
