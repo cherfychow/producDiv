@@ -1,0 +1,33 @@
+dag {
+bb="-3.522,-4.515,3.23,3.63"
+"bioavailable energy" [latent,pos="0.481,-3.059"]
+"number of entities" [pos="1.414,0.026"]
+"size structure" [pos="-0.056,1.480"]
+"total abundance" [pos="0.456,0.018"]
+"total biomass" [pos="-0.605,0.006"]
+"unknown abiotic" [latent,pos="1.494,-3.059"]
+SST [pos="-0.593,-3.055"]
+complementarity [latent,pos="0.967,-1.501"]
+diversity [exposure,pos="0.948,1.493"]
+evenness [pos="1.833,1.507"]
+productivity [outcome,pos="-0.052,-1.521"]
+"bioavailable energy" -> "total abundance"
+"bioavailable energy" -> "total biomass"
+"bioavailable energy" -> complementarity
+"bioavailable energy" <-> SST
+"number of entities" -> diversity
+"size structure" -> productivity
+"total abundance" -> "size structure"
+"total abundance" -> "total biomass"
+"total abundance" -> complementarity
+"total abundance" -> productivity
+"unknown abiotic" -> "bioavailable energy"
+"unknown abiotic" -> complementarity
+"unknown abiotic" -> productivity
+SST -> productivity
+complementarity -> productivity
+diversity -> "size structure"
+diversity -> complementarity
+evenness -> diversity
+productivity -> "total biomass"
+}
