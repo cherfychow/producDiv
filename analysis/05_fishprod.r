@@ -43,7 +43,7 @@ dt_prodDB$Diet <- factor(dt_prodDB$Diet, levels = sort(unique(prodtrait$Diet)))
 
 
 # check if any fish are larger than their max size
-prodtrait %>% filter(Size > MaxSizeTL) %>% nrow
+prodtrait %>% filter(Size >= MaxSizeTL) %>% nrow
 
 # limit observed size to be below max size
 prodtrait <- mutate(prodtrait, 
@@ -55,31 +55,51 @@ growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
 
 # Kmax, growth coef ============================================================
 
+# Kmax estimate per species-gridcell-year-dataID / species-samplingeventid-dataID
+# recommended boostrapts on 100s to 1000s scale
 set.seed(24)
 vbgf_par <- prodtrait %>% distinct %>% 
   predKmax(., dataset = dt_prodDB,
            fmod = growthf, niter = 100, return = 'pred')
 
 vbgf_par <- vbgf_par$pred # just keep predictions
-rm(prodtrait) # kept in vgbf_par
+rm(prodtrait)
+
 summary(vbgf_par)
 # negative Kmax values
-vbgf_par %>% filter(Kmax <= 0) %>% nrow() # work on this... see if 1000 runs solves it
+vbgf_par %>% filter(Kmax <= 0) %>% nrow() # work on this later... see if 1000 runs solves it
 
 # Mortality and gross somatic gain =============================================
 
-vbgf_par$M <- with(vbgf_par, predM(Lmeas = Size, Lmax = MaxSizeTL, 
-                                      Kmax = Kmax, method = 'Lorenzen'))
-vbgf_par <- vbgf_par %>% filter(Kmax > 0) %>% # leave out the nonsensicals for now
-  mutate(Size_t1 = applyVBGF(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax), # rate of change day^-1
-         size_delta = Size_t1 - Size) # length change
+# mortality
+vbgf_par <- vbgf_par %>% mutate(
+  M = predM(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax, method = 'Lorenzen'),
+  M_l = predM(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_lowq, method = 'Lorenzen'),
+  M_u = predM(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_uppq, method = 'Lorenzen'))
 
+vbgf_par <- vbgf_par %>% filter(Kmax > 0) %>% # leave out the nonsensicals for now
+  mutate(
+    Size_t1 = applyVBGF(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax), # rate of change day^-1
+    size_delta = Size_t1 - Size
+  ) # length change
+
+# lowers and uppers refer to the Kmax value used!
+# not necessarily the lower or upper of that metric
 vbgf_par <- vbgf_par %>% 
   mutate(biomass_gain = somaGain(a, b, Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax),
          biomass_loss = somaLoss(M, Lmeas = Size, a, b),
-         biomass_delta = biomass_gain - biomass_loss)
+         delta_g_day = biomass_gain - biomass_loss,
+         biomass_gain_l = somaGain(a, b, Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
+         biomass_loss_l = somaLoss(M_l, Lmeas = Size, a, b),
+         delta_g_day_l = biomass_gain_l - biomass_loss_l,
+         biomass_gain_u = somaGain(a, b, Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_uppq),
+         biomass_loss_u = somaLoss(M_u, Lmeas = Size, a, b),
+         delta_g_day_u = biomass_gain_u - biomass_loss)
 
 summary(vbgf_par)
+# don't need to keep traits
+vbgf_par <- vbgf_par %>% mutate(rareID = paste(DataID, gridcell, sep = '_')) %>% 
+  select(rareID, SamplingEventID, Species, Size, Kmax:delta_g_day_u)
 
 # Apply to assemblage data =====================================================
 
@@ -89,35 +109,91 @@ dt_rareass <- dt_rareass %>%
   mutate(prod_genus_sp = case_when(str_detect(genus_sp, '(?<=idae)\\ssp\\d*$') ~ str_remove(genus_sp, '\\ssp\\d*$'),
                                    .default = str_remove(genus_sp, '\\d+')))
 
-dt_prod <- vbgf_par %>% select(DataID:Species, 
-                    Size, size_delta, biomass_delta) %>% 
-  left_join(dt_rareass, ., by = c('DataID', 'gridcell', 'SamplingEventID',
-                                  'Year', 'Month', 'prod_genus_sp' = 'Species',
+# match up
+dt_prod <- vbgf_par %>% select(rareID:Size, starts_with('delta')) %>% 
+  left_join(dt_rareass, ., by = c('rareID', 'SamplingEventID', 
+                                  'prod_genus_sp' = 'Species',
                                   'Length' = 'Size'))
 # aggregate to species level
 dt_prod <- dt_prod %>% 
-  group_by_at(vars(-c(Abundance, size_delta, biomass_delta))) %>%
+  group_by(pick(!c(Abundance, starts_with('delta')))) %>%
   # multiply by count
-  summarise(size_delta = Abundance * size_delta,
-            biomass_delta = Abundance * biomass_delta) %>% 
-  ungroup %>% group_by_at(vars(-c(Length, size_delta, biomass_delta))) %>% 
+  summarise(delta_g_day = Abundance * delta_g_day,
+            delta_g_day_l = Abundance * delta_g_day_l,
+            delta_g_day_u = Abundance * delta_g_day_u) %>% 
+  ungroup %>% group_by(pick(!c(Length, delta_g_day, delta_g_day_l, delta_g_day_u))) %>% 
   # aggregate total length and biomass change for the species
-  summarise(size_delta = sum(size_delta, na.rm = T),
-            biomass_delta = sum(biomass_delta, na.rm = T)) %>% ungroup
+  summarise(delta_g_day = sum(delta_g_day, na.rm = T),
+            delta_g_day_l = sum(delta_g_day_l, na.rm = T),
+            delta_g_day_u = sum(delta_g_day_u, na.rm = T)) %>% ungroup
 
 # aggregate to site level
 
 dt_prod <- dt_prod %>% ungroup %>% 
-  group_by(pick(SamplingEventID:DataID, gridcell, rareID)) %>%
-  summarise(size_delta = sum(size_delta, na.rm = T), 
-            biomass_delta = sum(biomass_delta, na.rm = T)) %>% 
+  group_by(rareID, Year, SamplingEventID) %>%
+  summarise(delta_g_day = sum(delta_g_day, na.rm = T),
+            delta_g_day_l = sum(delta_g_day_l, na.rm = T),
+            delta_g_day_u = sum(delta_g_day_u, na.rm = T)) %>% 
   # convert to kg/yr
   # GET STUDY GRAIN SIZE
-  mutate(biomass_delta_yr = biomass_delta * 365 / 1000) %>% ungroup
+  mutate(delta_g_day = delta_g_day * 365 / 1000,
+         delta_g_day_l = delta_g_day_l * 365 / 1000,
+         delta_g_day_u = delta_g_day_u * 365 / 1000) %>% ungroup
+
+colnames(dt_prod) <- str_replace(colnames(dt_prod), 'delta\\_g\\_day', 'prod_kg_yr')
 
 ## Visualise ===================================================================
 
 require(ggplot2)
+require(patchwork)
 
-ggplot() +
-  
+pretty <- theme_bw(base_size = 13, base_family = "Arial") +
+  theme(panel.grid = element_blank())
+
+# diversity
+f_asyS <- ggplot(data = dt_div %>% filter(metric == 'S_asy')) +
+  # geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
+  #             alpha = 0.2) +
+  geom_point(aes(x = Year, y = value, color = rareID), 
+             shape = 21, size = 2, alpha = 0.6) +
+  geom_smooth(aes(x = Year, y = value, color = rareID),
+              method = 'loess', se = F) +
+  guides(fill = 'none', color = 'none') +
+  scale_color_cherulean(palette = 'cheridis', discrete = T) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
+  labs(y = 'Extrapolated species richness')
+
+f_S <- ggplot(data = dt_div %>% filter(metric == 'S')) +
+  # geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
+  #             alpha = 0.2) +
+  geom_point(aes(x = Year, y = value, color = rareID), 
+             shape = 21, size = 2, alpha = 0.6) +
+  geom_smooth(aes(x = Year, y = value, color = rareID),
+              method = 'loess', se = F) +
+  guides(fill = 'none', color = 'none') +
+  scale_color_cherulean(palette = 'cheridis', discrete = T) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
+  labs(y = 'Species richness')
+
+f_prod <- ggplot(data = dt_prod) +
+  geom_point(aes(x = Year, y = prod_kg_yr, color = rareID),
+             shape = 21, size = 2, alpha = 0.6) +
+  geom_smooth(aes(x = Year, y = prod_kg_yr, color = rareID), method = 'loess', se = F) +
+  guides(fill = 'none', color = 'none') +
+  scale_color_cherulean(palette = 'cheridis', discrete = T) +
+  labs(y = bquote("Biomass production (kg-yr"^-1~")"))
+
+(f_S + f_asyS + f_prod) * pretty
+
+# together!
+
+f_proddiv <- left_join(dt_div, dt_prod, by = c('rareID', 'Year', 'SamplingEventID')) %>% 
+  filter(metric == 'S') %>% 
+  ggplot(data = .) +
+  geom_point(aes(x = value, y = prod_kg_yr, color = rareID)) +
+  guides(color = 'none') + pretty +
+  scale_color_cherulean(palette = 'cheridis', discrete = T) +
+  labs(x = 'Species richness', y = bquote("Biomass production (kg-yr"^-1~")"))
+
+f_proddiv
+f_proddiv * scale_y_log10() + scale_x_log10()
