@@ -159,8 +159,14 @@ require(patchwork)
 dt_div <- dt_rareass %>% distinct(rareID, DataID) %>% 
   left_join(dt_div, ., by = "rareID")
 
-pretty <- theme_bw(base_size = 13, base_family = "Arial") +
-  theme(panel.grid = element_blank())
+pretty <- theme_classic(base_size = 13, base_family = "Arial") +
+  theme(panel.border = element_blank(),
+        axis.line = element_line(linewidth = 0.3),
+        axis.ticks = element_line(linewidth = 0.3),
+        axis.ticks.length = unit(5, "points"),
+        strip.placement = 'inside',
+        strip.text = element_text(size = rel(1.1), hjust = 0, face = 'bold'),
+        strip.background = element_blank())
 
 # diversity
 f_asyS <- ggplot(data = dt_div %>% filter(metric == 'S_asy')) +
@@ -226,17 +232,26 @@ ggplot() +
   #             alpha = 0.2) +
   geom_point(data = dt_div %>% filter(metric == 'S'), 
              aes(x = Year, y = value * 200, group = rareID), 
-             shape = 21, size = 2, alpha = 0.6, color = 'tomato3') +
+             shape = 21, size = 2, alpha = 0.6, color = 'royalblue') +
   geom_smooth(data = dt_div %>% filter(metric == 'S'),
               aes(x = Year, y = value * 200, group = rareID),
-              method = 'loess', se = F, size = 0.75, color = 'tomato3') +
+              method = 'loess', se = F, size = 0.75, color = 'royalblue') +
   geom_point(data = dt_prod, 
              aes(x = Year, y = prod_kg_yr, group = rareID), 
-             shape = 21, size = 2, alpha = 0.6, color = 'mediumorchid3') +
+             shape = 21, size = 2, alpha = 0.6, color = 'olivedrab') +
   geom_smooth(data = dt_prod,
               aes(x = Year, y = prod_kg_yr, group = rareID),
-              method = 'loess', se = F, size = 0.75, color = 'mediumorchid3') +
+              method = 'loess', se = F, size = 0.75, color = 'olivedrab') +
   scale_y_continuous(name = "Productivity", 
                      sec.axis = sec_axis(name = "Species richness", trans = ~. / 200)) +
   labs(x = 'Year') + facet_wrap(vars(DataID), scales = 'free_x') + pretty
+
+
+(ggplot(data = vbgf_par) +
+    geom_density(aes(x = Kmax)) + pretty) +
+  
+(vbgf_par %>% group_by(Species) %>% summarise(Kmax_SD = sd(Kmax)) %>%
+  ggplot(data = .) +
+    geom_density(aes(x = Kmax_SD)) + pretty)
+  
 
