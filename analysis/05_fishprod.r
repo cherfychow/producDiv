@@ -63,7 +63,7 @@ vbgf_par <- prodtrait %>% distinct %>%
            fmod = growthf, niter = 100, return = 'pred')
 
 vbgf_par <- vbgf_par$pred # just keep predictions
-rm(prodtrait)
+rm(prodtrait, growthf)
 
 summary(vbgf_par)
 # negative Kmax values
@@ -135,17 +135,29 @@ dt_prod <- dt_prod %>% ungroup %>%
             delta_g_day_l = sum(delta_g_day_l, na.rm = T),
             delta_g_day_u = sum(delta_g_day_u, na.rm = T)) %>% 
   # convert to kg/yr
-  # GET STUDY GRAIN SIZE
   mutate(delta_g_day = delta_g_day * 365 / 1000,
          delta_g_day_l = delta_g_day_l * 365 / 1000,
          delta_g_day_u = delta_g_day_u * 365 / 1000) %>% ungroup
 
 colnames(dt_prod) <- str_replace(colnames(dt_prod), 'delta\\_g\\_day', 'prod_kg_yr')
 
+# kg/ha/yr
+dt_prod <- dt_rareass %>% distinct(rareID, DataID) %>% 
+  left_join(dt_meta[c(1,7)], ., by = "DataID") %>% 
+  mutate(Area = str_extract(`Grain size`, '\\d{2,}')) %>% 
+  select(DataID, rareID, Area) %>% 
+  left_join(dt_prod, ., by = "rareID")
+dt_prod$Area <- as.numeric(dt_prod$Area)
+# unit conversion
+dt_prod <- dt_prod %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
+
 ## Visualise ===================================================================
 
 require(ggplot2)
 require(patchwork)
+
+dt_div <- dt_rareass %>% distinct(rareID, DataID) %>% 
+  left_join(dt_div, ., by = "rareID")
 
 pretty <- theme_bw(base_size = 13, base_family = "Arial") +
   theme(panel.grid = element_blank())
@@ -181,7 +193,7 @@ f_prod <- ggplot(data = dt_prod) +
   geom_smooth(aes(x = Year, y = prod_kg_yr, color = rareID), method = 'loess', se = F) +
   guides(fill = 'none', color = 'none') +
   scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  labs(y = bquote("Biomass production (kg-yr"^-1~")"))
+  labs(y = bquote("Biomass production (kg⋅ha"^-1~"⋅yr"^-1~")"))
 
 (f_S + f_asyS + f_prod) * pretty
 
@@ -193,7 +205,38 @@ f_proddiv <- left_join(dt_div, dt_prod, by = c('rareID', 'Year', 'SamplingEventI
   geom_point(aes(x = value, y = prod_kg_yr, color = rareID)) +
   guides(color = 'none') + pretty +
   scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  labs(x = 'Species richness', y = bquote("Biomass production (kg-yr"^-1~")"))
+  labs(x = 'Species richness', y = bquote("Biomass production (kg⋅ha"^-1~"⋅yr"^-1~")"))
 
 f_proddiv
-f_proddiv * scale_y_log10() + scale_x_log10()
+f_proddiv * scale_y_log10()
+
+
+left_join(dt_div, dt_prod, by = c('rareID', 'Year', 'SamplingEventID')) %>% 
+  filter(metric == 'S_asy') %>% 
+  ggplot(data = .) +
+  geom_point(aes(x = value, y = prod_kg_yr, color = rareID)) +
+  guides(color = 'none') + pretty +
+  scale_color_cherulean(palette = 'cheridis', discrete = T) +
+  labs(x = 'Estimated species richness', 
+       y = bquote("Biomass production (kg⋅ha"^-1~"⋅yr"^-1~")")) +
+  scale_x_log10() + scale_y_log10()
+
+ggplot() +
+  # geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
+  #             alpha = 0.2) +
+  geom_point(data = dt_div %>% filter(metric == 'S'), 
+             aes(x = Year, y = value * 200, group = rareID), 
+             shape = 21, size = 2, alpha = 0.6, color = 'tomato3') +
+  geom_smooth(data = dt_div %>% filter(metric == 'S'),
+              aes(x = Year, y = value * 200, group = rareID),
+              method = 'loess', se = F, size = 0.75, color = 'tomato3') +
+  geom_point(data = dt_prod, 
+             aes(x = Year, y = prod_kg_yr, group = rareID), 
+             shape = 21, size = 2, alpha = 0.6, color = 'mediumorchid3') +
+  geom_smooth(data = dt_prod,
+              aes(x = Year, y = prod_kg_yr, group = rareID),
+              method = 'loess', se = F, size = 0.75, color = 'mediumorchid3') +
+  scale_y_continuous(name = "Productivity", 
+                     sec.axis = sec_axis(name = "Species richness", trans = ~. / 200)) +
+  labs(x = 'Year') + facet_wrap(vars(DataID), scales = 'free_x') + pretty
+

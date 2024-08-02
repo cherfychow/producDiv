@@ -25,6 +25,8 @@ tempdt2 <- read_csv('data_outputs/BT45_moorea_lter_obs.csv')
 dt_assemblage <- bind_rows(tempdt, tempdt2)
 rm(tempdt, tempdt2)
 
+dt_meta <- read_csv('./src/sandbox_meta.csv') # dataset level metadata
+
 View(dt_assemblage)
 
 # CHECK + VALIDATE DATA ------------------------------------------------------
