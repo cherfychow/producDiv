@@ -1,28 +1,27 @@
 dag {
-"fishing pressure" [adjusted,pos="-1.526,-0.531"]
+"fishing pressure" [adjusted,pos="-1.459,-0.346"]
 "number of entities" [pos="-1.450,-0.464"]
-"size structure_a" [pos="-1.476,-0.500"]
-"species identity_s" [pos="-1.551,-0.236"]
+"size structure_a" [pos="-1.475,-0.515"]
+"species identity_s" [pos="-1.549,-0.222"]
 "total abundance" [adjusted,pos="-1.459,-0.517"]
 "water column position_s" [pos="-1.538,-0.209"]
 Kmax_s [pos="-1.535,-0.291"]
 Lmax_s [pos="-1.542,-0.348"]
-Pmortality [pos="-1.524,-0.447"]
-Precruitment [pos="-1.512,-0.453"]
-SST [pos="-1.540,-0.562"]
-age_si [pos="-1.496,-0.050"]
+Pmortality [pos="-1.513,-0.356"]
+SST [pos="-1.536,-0.546"]
+age_si [pos="-1.501,-0.060"]
 complementarity [latent,pos="-1.470,-0.671"]
-diet_s [pos="-1.552,-0.323"]
+diet_s [pos="-1.552,-0.314"]
 diversity [exposure,pos="-1.453,-0.621"]
-length_si [pos="-1.479,-0.052"]
+length_si [pos="-1.501,-0.153"]
 prod_a [outcome,pos="-1.488,-0.618"]
 prod_s [pos="-1.488,-0.403"]
 prod_si [pos="-1.488,-0.140"]
+"fishing pressure" -> "number of entities"
+"fishing pressure" -> "size structure_a"
 "fishing pressure" -> "total abundance"
-"fishing pressure" -> Pmortality
-"fishing pressure" -> Precruitment
-"fishing pressure" -> diversity
 "number of entities" -> diversity
+"size structure_a" -> prod_a
 "species identity_s" -> "water column position_s"
 "species identity_s" -> Lmax_s
 "species identity_s" -> diet_s
@@ -30,23 +29,21 @@ prod_si [pos="-1.488,-0.140"]
 "total abundance" -> diversity
 "total abundance" -> prod_a
 "water column position_s" -> Kmax_s
+Kmax_s -> Pmortality
 Kmax_s -> age_si
 Lmax_s -> Kmax_s
-Pmortality -> prod_s
+Lmax_s -> Pmortality
 Pmortality -> prod_si
-Precruitment -> prod_s
-Precruitment -> prod_si
 SST -> Kmax_s
-age_si -> Pmortality
 age_si -> prod_si
 complementarity -> prod_a
 diet_s -> Kmax_s
 diversity -> complementarity
 diversity -> prod_a
 length_si -> "size structure_a"
+length_si -> Pmortality
 length_si -> age_si
 length_si -> prod_si
 prod_s -> prod_a
 prod_si -> prod_s
 }
-

@@ -151,7 +151,7 @@ dt_prod$Area <- as.numeric(dt_prod$Area)
 # unit conversion
 dt_prod <- dt_prod %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
 
-## Visualise ===================================================================
+## Figures ===================================================================
 
 require(ggplot2)
 require(patchwork)
@@ -164,6 +164,7 @@ pretty <- theme_classic(base_size = 13, base_family = "Arial") +
         axis.line = element_line(linewidth = 0.3),
         axis.ticks = element_line(linewidth = 0.3),
         axis.ticks.length = unit(5, "points"),
+        axis.text = element_text(size = rel(1)),
         strip.placement = 'inside',
         strip.text = element_text(size = rel(1.1), hjust = 0, face = 'bold'),
         strip.background = element_blank())
