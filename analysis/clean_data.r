@@ -57,7 +57,7 @@ dt_assemblage <- dt_assemblage %>%
   # family = Gobiidae
   # genus = Scarus sp
   # specified = working name distinguishable from other uncertains, e.g. sp1 and sp2
-  mutate(taxon_resolution = case_when(str_detect(Species, 'sp$') & is.na(Genus) == F ~ 'genus', 
+  mutate(taxon_resolution = case_when(str_detect(Species, 'sp$') & is.na(Genus) == F & str_detect(Genus, 'Scari(ni|nae)') == F ~ 'genus', 
                                       str_detect(Species, 'sp\\d+$') & is.na(Genus) == F ~ 'genus specified', 
                                       is.na(Family) == F & is.na(Genus) ~ 'family',
                                       is.na(Family) == F & is.na(Genus) & str_detect(Species, '\\d') ~ 'family specified',
@@ -68,6 +68,7 @@ dt_assemblage <- dt_assemblage %>%
 dt_assemblage <- mutate(dt_assemblage, 
                         Species = case_when(taxon_resolution == 'family' & Species == 'sp' ~ NA, 
                                             .default = Species))
+dt_assemblage$Species[str_detect(dt_assemblage$Genus, 'Scarini') & str_detect(dt_assemblage$Species, '\\d') == F] <- NA
 
 dt_assemblage %>% distinct(Family, Genus, Species) %>% arrange(Family, Genus, Species) %>%  View
 dt_assemblage %>% filter(str_detect(Species, '\\s')) %>% View
@@ -122,7 +123,6 @@ nomatch
 
 # get valid names for unaccepted
 worms_valid <- wm_records_names(unaccepted$name, marine_only = T) %>% bind_rows
-dt_spcheck <- bind_rows(dt_spcheck, worms_valid)
 rm(unaccepted, worms_valid)
 
 nomatch <- nomatch[-which(nomatch == 'Apogon red')]
@@ -147,51 +147,46 @@ nomatch <- c(
 )
 
 ## IMPLEMENT FIXES =================================================================================
+
 replace <- dt_spcheck$valid_name
 names(replace) <- dt_spcheck$genus_sp
-replace <- append(replace, nomatch)
+replace
+nomatch
 
 dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, replace)
-dt_assemblage %>% filter(str_detect(genus_sp, '^NA')) %>% distinct %>% View
+dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, nomatch)
+
+replace <- worms_valid$valid_name
+names(replace) <- worms_valid$scientificname
+dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, replace)
+
+dt_assemblage %>% distinct(Family, Genus, Species, genus_sp) %>% 
+  arrange(Family, genus_sp) %>% View
 
 # double check
-rm(spcheck, replace, dt_spcheck)
+rm(sp, nomatch, worms_valid, replace, dt_spcheck)
+# create new clean columns
+dt_assemblage <- dt_assemblage %>% rename(genus_sp_valid = genus_sp) %>% 
+  # extract genus from validated genus_sp
+  mutate(Genus_valid = case_when(is.na(Genus) == F ~ word(genus_sp_valid, 1), 
+                                 .default = NA),
+         # get epithet from validated genus_sp or original if it's a specified uncertain
+         Species_valid = case_when(taxon_resolution == 'species' ~ word(genus_sp_valid, 2),
+                                   str_detect(taxon_resolution, 'specified') ~ Species,
+                                   taxon_resolution == 'genus' ~ Species,
+                                   .default = NA))
 
-# redo classification
-dt_assemblage <- dt_assemblage %>% 
-  # family = Gobiidae
-  # genus = Scarus sp
-  # specified = working name distinguishable from other uncertains, e.g. sp1 and sp2
-  mutate(taxon_resolution = case_when(str_detect(Species, 'sp$') & is.na(Genus) == F ~ 'genus', 
-                                      str_detect(Species, 'sp\\d+$') & is.na(Genus) == F ~ 'genus specified', 
-                                      is.na(Family) == F & is.na(Genus) & is.na(Species) ~ 'family',
-                                      is.na(Family) == F & is.na(Genus) & is.na(Species) == F ~ 'family specified',
-                                      str_detect(Species, 'sp\\d*$') == F ~ 'species',
-                                      str_detect(Genus, 'Scari(ni|nae)') ~ 'family'))
+## WoRMS and FISHBASE HARMONISE=====================================================================
 
-# take the validated names and resplit to fix the Genus and Species column
-dt_assemblage <- mutate(dt_assemblage, Genus2 = case_when(str_detect(word(genus_sp, 1), 'idae$') ~ NA,
-                                                          .default = word(genus_sp, 1)), 
-                        # family level IDs should be NA in Species, unless it's Scarini or a known uncertain
-                        Species2 = case_when(is.na(word(genus_sp, 2)) == F ~ word(genus_sp, 2), .default = NA))
+fb_valid <- dt_assemblage %>% filter(taxon_resolution == 'species') %>% 
+  distinct(genus_sp_valid) %>% arrange(genus_sp_valid)
+fb_sp <- species(species_list = fb_valid$genus_sp_valid) # get fishbase valid species
+fb_valid <- left_join(fb_valid, fb_sp[1:2], by = c('genus_sp_valid' = 'Species'))
 
-dt_assemblage %>% distinct(Family, Genus, Species, Genus2, Species2) %>%
-  filter(Species2 != Species | Genus2 != Genus) %>%
-  arrange(Family, Genus2, Species2) %>% View
-dt_assemblage %>% distinct(Family, Genus, Species, Genus2, Species2) %>%
-  filter(str_detect(Species, '\\d$|sp$')) %>%
-  arrange(Family, Genus2, Species2) %>% View # check if the uncertainty information is preserved;
-
-# looks ok. replace
-dt_assemblage <- dt_assemblage %>% select(!c(Genus, Species)) %>% 
-  rename(Genus = Genus2, Species = Species2)
-
-rm(sp, dt_spcheck, replace)
-
-## VALIDATE GENUS/FAMILY -------------------------------------------------------
+## VALIDATE MATCH GENUS/FAMILY =====================================================================
 
 # use taxize to interact with worms API better
-gen <- dt_assemblage$Genus |> unique() |> sort() |> na.omit()
+gen <- dt_assemblage$Genus_valid |> unique() |> sort() |> na.omit()
 gen <- gen[-which(gen == 'Scarini')]
 family <- classification(gen, db = 'worms', rows = 1) # only consider the top result
 
