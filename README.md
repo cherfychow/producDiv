@@ -17,5 +17,5 @@
 - *`gaspar_traits.csv`*: traits compiled by [Floeter et al. 2017](https://doi.org/10.1111/brv.12336) that we use to partially compile water column position traits
 - *`missing_traits_genus.csv`*: genus-level traits compiled manually from FishBase model estimates and most common trait values.
 - *`missing_troph_sp.csv`*: diet traits for species that don't have machine readable diet information on FishBase
-- *`oisst_landmask.nc`*: Spatial data to filter out land areas from the NOAA OISST v2 rasters
+- *`noaa_oisst.nc`*: NOAA Optimum Interpolated Sea Surface Temperature v2.1 spatial gridded data ([https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html](https://psl.noaa.gov/data/gridded/data.noaa.oisst.v2.highres.html)). Not included due to size.
 - *`parravicini_trophic_guilds.csv`*: species diet traits from model extrapolations by [Parravicini et al. 2020](https://doi.org/10.1371/journal.pbio.3000702)
