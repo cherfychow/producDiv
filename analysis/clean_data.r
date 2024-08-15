@@ -1,13 +1,10 @@
 
 
-require(sf)
-require(rnaturalearth)
 require(dplyr)
 require(readr)
-require(ggplot2)
+require(taxize)
 require(rfishbase)
 require(worrms)
-require(taxize)
 require(stringr)
 require(purrr)
 
@@ -20,15 +17,17 @@ summary(dt_assemblage)
 
 # TAXONOMY CLEAN ===================================================================================
 
-dt_assemblage %>% distinct(Family, Genus, Species) %>% arrange(Family, Genus, Species) %>%  View
+# dt_assemblage %>% distinct(Family, Genus, Species) %>% arrange(Family, Genus, Species) %>% View
 
 # clean epithets
+dt_assemblage$Species[with(dt_assemblage, which(Genus == 'Eviota' & str_detect(Species, '^cf')))] <- str_replace(dt_assemblage$Species[with(dt_assemblage, which(Genus == 'Eviota' & str_detect(Species, '^cf')))], 'cf', 'cf. ')
 # remove genera, but allow the cf. records
-dt_assemblage$Species[-str_which(dt_assemblage$Species, '^cf')] <- str_remove(dt_assemblage$Species[-str_which(dt_assemblage$Species, '^cf')], '^[A-Z]{1}[a-z]+\\s')
-dt_assemblage$Species[-str_which(dt_assemblage$Species, '^cf')] <- word(dt_assemblage$Species[-str_which(dt_assemblage$Species, '^cf')], 1) # just epithets, no subspecies
+dt_assemblage$Genus[which(str_detect(dt_assemblage$Species, '\\s') & str_detect(dt_assemblage$Species, '^cf') == F)] <- word(dt_assemblage$Species[which(str_detect(dt_assemblage$Species, '\\s') & str_detect(dt_assemblage$Species, '^cf') == F)], 1)
+dt_assemblage$Species[str_which(dt_assemblage$Species, '^cf', negate = T)] <- str_remove(dt_assemblage$Species[str_which(dt_assemblage$Species, '^cf', negate = T)], '^[A-Z]{1}[a-z]+\\s')
+dt_assemblage$Species[str_which(dt_assemblage$Species, '^cf', negate = T)] <- word(dt_assemblage$Species[str_which(dt_assemblage$Species, '^cf', negate = T)], 1) # just epithets, no subspecies
 
 # uncertains
-dt_assemblage %>% distinct(Genus, Species) %>% filter(str_detect(Species, '^sp.{1,2}$')) %>% View
+# dt_assemblage %>% distinct(Genus, Species) %>% filter(str_detect(Species, '^sp.{1,2}$')) %>% View
 dt_assemblage$Species[dt_assemblage$Species %in% c('sp.', 'spp', 'species', 'spies')] <- 'sp'
 dt_assemblage$Species[dt_assemblage$Species == 'spx'] <- 'sp1'
 dt_assemblage$Species[dt_assemblage$Species == 'spz'] <- 'sp2'
@@ -37,6 +36,7 @@ dt_assemblage$Family[dt_assemblage$Genus == 'Blenny'] <- 'Blenniidae'
 dt_assemblage$Species[dt_assemblage$Genus == 'Blenny'] <- NA
 dt_assemblage$Genus[dt_assemblage$Genus == 'Blenny'] <- NA
 dt_assemblage$Species <- str_replace(dt_assemblage$Species, 'i{3}$', 'ii')
+dt_assemblage$Species[which(dt_assemblage$Species == 'red')] <- 'sp1'
 
 # parrotfish specific
 dt_assemblage$Species[dt_assemblage$Genus == 'Scarinissp8'] <- 'sp8'
@@ -46,29 +46,32 @@ dt_assemblage$Genus[dt_assemblage$Family == 'Scaridae' & is.na(dt_assemblage$Gen
 dt_assemblage$Family[dt_assemblage$Family == 'Scaridae'] <- 'Labridae'
 dt_assemblage$Genus <- str_to_title(dt_assemblage$Genus)
 dt_assemblage$Species <- str_to_lower(dt_assemblage$Species)
+dt_assemblage$Genus[dt_assemblage$Genus == 'Labrid'] <- NA
 
 # omits
-dt_assemblage <- dt_assemblage %>% filter(!str_detect(Species, 'crcp|franc'))
-dt_assemblage <- filter(dt_assemblage, Genus != 'Teleostei') # omit
+dt_assemblage <- dt_assemblage[-which(str_detect(dt_assemblage$Species, 'crcp|franc') & is.na(dt_assemblage$Genus)),]
+dt_assemblage <- dt_assemblage[-which(dt_assemblage$Genus == 'Teleostei'),]
 
 
 # make a column to help with sorting uncertain records
-dt_assemblage <- dt_assemblage %>% 
-  # family = Gobiidae
-  # genus = Scarus sp
-  # specified = working name distinguishable from other uncertains, e.g. sp1 and sp2
-  mutate(taxon_resolution = case_when(str_detect(Species, 'sp$') & is.na(Genus) == F & str_detect(Genus, 'Scari(ni|nae)') == F ~ 'genus', 
-                                      str_detect(Species, 'sp\\d+$') & is.na(Genus) == F ~ 'genus specified', 
-                                      is.na(Family) == F & is.na(Genus) ~ 'family',
-                                      is.na(Family) == F & is.na(Genus) & str_detect(Species, '\\d') ~ 'family specified',
-                                      str_detect(Species, 'sp\\d*$') == F & is.na(Genus) == F ~ 'species',
-                                      str_detect(Genus, 'Scari(ni|nae)') ~ 'family'))
+dt_assemblage$taxon_resolution <- NA
+# do the normals first
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(is.na(Family) == F & is.na(Genus)))] <- 'family'
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(is.na(Genus) == F & str_detect(Species, '^sp$')))] <- 'genus'
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(is.na(Genus) == F & is.na(Species) == F))] <- 'species'
+
+# now the exceptions
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(Genus == 'Scarini'))] <- 'family'
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(is.na(Genus) & str_detect(Species, '^sp\\d{1,2}$')))] <- 'family specified'
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(is.na(Genus) == F & str_detect(Species, '^sp\\d{1,2}$')))] <- 'genus specified'
+# Scarini special
+dt_assemblage$taxon_resolution[with(dt_assemblage, which(Genus == 'Scarini' & str_detect(Species, '^sp\\d{1,2}$')))] <- 'family specified'
+
+# reorg
+dt_assemblage <- relocate(dt_assemblage, taxon_resolution, .after = Species)
 
 # family level consistency, specified from unspecified
-dt_assemblage <- mutate(dt_assemblage, 
-                        Species = case_when(taxon_resolution == 'family' & Species == 'sp' ~ NA, 
-                                            .default = Species))
-dt_assemblage$Species[str_detect(dt_assemblage$Genus, 'Scarini') & str_detect(dt_assemblage$Species, '\\d') == F] <- NA
+dt_assemblage$Species[which(dt_assemblage$taxon_resolution == 'family')] <- NA
 
 dt_assemblage %>% distinct(Family, Genus, Species) %>% arrange(Family, Genus, Species) %>%  View
 dt_assemblage %>% filter(str_detect(Species, '\\s')) %>% View
@@ -79,89 +82,102 @@ dt_assemblage %>% filter(str_detect(Species, '\\s')) %>% View
 dt_assemblage <- dt_assemblage %>% mutate(genus_sp = case_when(
   taxon_resolution == 'family' ~ Family,
   taxon_resolution == 'family specified' ~ paste(Family, Species, sep = ' '),
-  taxon_resolution %in% c('species', 'genus specified', 'genus') ~ paste(Genus, Species, sep = ' ')
-))
+  .default = paste(Genus, Species, sep = ' ')
+)) %>% relocate(genus_sp, .before = Family)
 
 # generate species list for checking
-sp <- dt_assemblage %>% filter(taxon_resolution == 'species') %>% 
-  filter(str_detect(Species, '\\s|[:punct:]|\\d') == F) %>% 
+sp <- dt_assemblage %>% # only certain, species level IDs for this stage
+  filter(taxon_resolution == 'species' & str_detect(Species, '\\s|[:punct:]') == F) %>% 
   distinct(genus_sp) %>% pull %>% sort
 
 # fetch taxonomic IDs from fuzzy matching
 dt_spcheck <- tibble(genus_sp = sp)
+# GBIF is smarter about misspellings than WoRMS, but requires more user input
 dt_spcheck$worms_id <- get_wormsid(dt_spcheck$genus_sp, searchtype = 'scientific', fuzzy = T,
                                    marine_only = T, messages = F)
+dt_spcheck$gbif_id <- NA
+dt_spcheck$gbif_id[is.na(dt_spcheck$worms_id)] <- get_gbifid(dt_spcheck$genus_sp[is.na(dt_spcheck$worms_id)], 
+                                                             messages = F, method = 'backbone')
 
 # first round of catching unaccepted names
-unaccepted <- dt_spcheck %>% filter(is.na(worms_id)) %>% select(genus_sp)
+dt_spcheck %>% filter(is.na(worms_id) & is.na(gbif_id)) # ok only three to fix manually
 
 # get names. filter out synonyms
 dt_spcheck <- dt_spcheck %>% filter(is.na(worms_id) == F) %>%
-  mutate(worms_id = as.numeric(worms_id))
-worms <- wm_record(dt_spcheck$worms_id) %>% bind_rows
+  mutate(across(ends_with('id'), as.numeric))
+worms <- wm_record_(dt_spcheck$worms_id |> na.omit())  %>% bind_rows # will take a loong time
 gc()
+dt_spcheck$worms_id <- as.numeric(dt_spcheck$worms_id)
+dt_spcheck <- worms %>% select(AphiaID, scientificname, status, valid_name, class, family, genus) %>% 
+  rename(worms_valid = valid_name, worms_status = status, worms_name = scientificname) %>% distinct %>% 
+  left_join(dt_spcheck, ., by = c('worms_id' = 'AphiaID'))
 
-# cephalopods and seals???
-notfish <- worms %>% filter(!class %in% c('Teleostei', 'Elasmobranchii'))
-dt_assemblage <- dt_assemblage %>% filter(!genus_sp %in% notfish$scientificname) # remove
-# make dt_spcheck the correction object
-dt_spcheck <- worms %>% filter(status != 'accepted') %>% inner_join(dt_spcheck, ., by = c('worms_id' = 'AphiaID'))
+dt_spcheck %>% filter(is.na(worms_id)) %>% View
+gbif <- id2name(dt_spcheck$gbif_id |> na.omit(), db = 'gbif')
+gbif <- bind_rows(gbif[1:length(gbif)])
+dt_spcheck2 <- gbif %>% select(!rank) %>% 
+  rename(gbif_name = name, gbif_status = status, gbif_id = id) %>% distinct %>% 
+  left_join(dt_spcheck, ., by = "gbif_id")
+dt_spcheck <- dt_spcheck2
 
-# alternative way to match these wildly off name misspellings
-gbif_id <- get_gbifid(worms_unaccepted$genus_sp, messages = F, method = 'backbone')
-gbif_unaccepted <- taxize::id2name(id = gbif_unaccepted$gbif_id)
+# gbif is really a middleman for better fuzzy matching misspellings
+# put them back through worms
 
-# isolate names that still can't be matched
-nomatch <- unaccepted$genus_sp[which(map(gbif_unaccepted, length) == 1)]
-gbif_unaccepted <- gbif_unaccepted[which(map(gbif_unaccepted, length) > 1)] %>% bind_rows
-unaccepted <- unaccepted %>% filter(!genus_sp %in% nomatch) %>% bind_cols(., gbif_unaccepted)
-# add the poor matches to nomatch
-nomatch <- unaccepted %>% filter(rank != 'species') %>% pull(genus_sp) %>% append(nomatch, .)
-unaccepted <- unaccepted %>% filter(status != 'accepted', rank == 'species')
-rm(worms, gbif_unaccepted, notfish)
-nomatch
+worms2 <- wm_records_names(dt_spcheck$gbif_name |> na.omit(), marine_only = T) %>% bind_rows
+# isolate to then rejoin
+gbif_match <- dt_spcheck %>% filter(is.na(gbif_id) == F) %>% select(genus_sp, gbif_id, gbif_name)
+# remove bad gbif matches
+gbif_match <- gbif_match %>% filter(str_detect(gbif_name, '\\s'))
+gbif_match <- worms2 %>% select(scientificname, status, valid_name, class, family, genus) %>% 
+  rename(worms_valid = valid_name, worms_status = status, worms_name = scientificname) %>% 
+  distinct %>% left_join(gbif_match, ., by = c('gbif_name' = 'worms_name'))
 
-# get valid names for unaccepted
-worms_valid <- wm_records_names(unaccepted$name, marine_only = T) %>% bind_rows
-rm(unaccepted, worms_valid)
+# rejoin
+dt_spcheck <- dt_spcheck %>% filter(!genus_sp %in% gbif_match$genus_sp) %>%
+  bind_rows(., gbif_match) %>% arrange(genus_sp)
 
-nomatch <- nomatch[-which(nomatch == 'Apogon red')]
-nomatch <- nomatch[-which(nomatch == 'Menaphorus punticulatus')] # unresolved species
-nomatch <- nomatch[-which(nomatch == 'Hypoplectrus hybrid')]
+dt_spcheck <- dt_spcheck %>% select(!starts_with('gbif'))
+dt_spcheck %>% filter(is.na(worms_valid)) %>% View
+rm(dt_spcheck2)
+
 # manual validation for these
+dt_spcheck <- dt_spcheck %>% 
+  mutate(worms_valid = case_when(.default = worms_valid,
+                                 genus_sp == "Calostomus coralinus" ~ 'Calotomus carolinus',
+                                 genus_sp == "Acanthochromis japonicus" ~ 'Acanthochromis polyacanthus',
+                                 genus_sp == "Cantherhines maculatus" ~ 'Cantherhines maculata',
+                                 genus_sp == "Ecsenius flavus" ~ 'Plagiotremus flavus',
+                                 genus_sp == "Enneanectes tutuilae" ~ 'Enneapterygius tutuilae',
+                                 genus_sp == "Epinephelides guttatus" ~ 'Epinephelus guttatus',
+                                 genus_sp == "Holocanthus townsendi" ~ 'Holacanthus townsendi', # hybrid
+                                 genus_sp == "Hypoplectrus tann" ~ 'Hypoplectrus randallorum',
+                                 genus_sp == "Labroides manabei" ~ 'Labropsis manabei',
+                                 genus_sp == "Ucla macrospilus" ~ 'Acanthemblemaria macrospilus',
+                                 genus_sp == "Chromis tricincta" ~ 'Chrysiptera tricincta',
+                                 genus_sp == "Plectorhinchus pictus" ~ 'Plectorhinchus picus',
+                                 genus_sp == 'Stegostoma varium' ~ 'Stegostoma tigrinum'))
 
-names(nomatch) <- nomatch
-nomatch <- c(
-  "Calostomus coralinus" = 'Calotomus carolinus',
-  "Acanthochromis japonicus" = 'Acanthochromis polyacanthus',
-  "Cantherhines maculatus"= 'Cantherhines maculata',
-  "Ecsenius flavus" = 'Plagiotremus flavus',
-  "Enneanectes tutuilae" = 'Enneapterygius tutuilae',
-  "Epinephelides guttatus" = 'Epinephelus guttatus',
-  "Holocanthus townsendi" = 'Holacanthus townsendi', # hybrid
-  "Hypoplectrus tann" = 'Hypoplectrus randallorum',
-  "Labroides manabei" = 'Labropsis manabei',
-  "Pomacentrus margaritifer" = 'Pycnochromis margaritifer',
-  "Ucla macrospilus" = 'Acanthemblemaria macrospilus',
-  "Chromis tricincta" = 'Chrysiptera tricincta'
-)
 
 ## IMPLEMENT FIXES =================================================================================
 
-replace <- dt_spcheck$valid_name
-names(replace) <- dt_spcheck$genus_sp
-replace
-nomatch
+dt_cleanfish <- dt_spcheck %>% select(genus_sp, worms_valid) %>% 
+  left_join(dt_assemblage, ., by = "genus_sp")
 
-dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, replace)
-dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, nomatch)
+dt_cleanfish %>% filter(taxon_resolution != 'species') %>% 
+  distinct(Family, Genus, Species, genus_sp, taxon_resolution) %>% arrange(genus_sp) %>% View
+dt_cleanfish %>% 
+  distinct(Family, Genus, Species, genus_sp, taxon_resolution) %>% 
+  filter(str_detect(genus_sp, 'idae')) %>% arrange(genus_sp) %>% View
 
-replace <- worms_valid$valid_name
-names(replace) <- worms_valid$scientificname
-dt_assemblage$genus_sp <- str_replace_all(dt_assemblage$genus_sp, replace)
+# eliminate non-fish
+notfish <- dt_spcheck %>% 
+  filter(is.na(class) == F) %>% 
+  filter(!class %in% c('Teleostei', 'Elasmobranchii')) %>%
+  pull(genus_sp)
 
-dt_assemblage %>% distinct(Family, Genus, Species, genus_sp) %>% 
-  arrange(Family, genus_sp) %>% View
+dt_cleanfish <- dt_cleanfish %>% filter(!genus_sp %in% notfish)
+notfish <- word(notfish, 1) # also use the genera to filter it out
+dt_cleanfish <- dt_cleanfish %>% filter(!Genus %in% notfish)
 
 # double check
 rm(sp, nomatch, worms_valid, replace, dt_spcheck)
