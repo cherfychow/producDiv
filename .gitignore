@@ -5,6 +5,10 @@ Icon?
 
 # ignore some data files
 *.nc
+figure/
+*.rmd
+*.html
+*.gif
 
 # History files
 .Rhistory
