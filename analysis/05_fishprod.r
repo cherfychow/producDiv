@@ -7,7 +7,7 @@ require(stringr)
 require(rfishprod)
 require(beepr)
 
-# PREP =========================================================================
+# PREP =============================================================================================
 
 # give predKmax data on all fishes observed
 # then calculate productivity per rareID
@@ -53,23 +53,24 @@ prodtrait <- mutate(prodtrait,
 # Formula from Morais and Bellwood (2018) #
 growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
 
-# Kmax, growth coef ============================================================
+# Kmax, growth coef ================================================================================
 
 # Kmax estimate per species-gridcell-year-dataID / species-samplingeventid-dataID
 # recommended boostrapts on 100s to 1000s scale
 set.seed(24)
 vbgf_par <- prodtrait %>% distinct %>% 
   predKmax(., dataset = dt_prodDB,
-           fmod = growthf, niter = 100, return = 'pred')
+           fmod = growthf, niter = 500, return = 'pred')
 
 vbgf_par <- vbgf_par$pred # just keep predictions
 rm(prodtrait, growthf)
+beep()
 
 summary(vbgf_par)
 # negative Kmax values
 vbgf_par %>% filter(Kmax <= 0) %>% nrow() # work on this later... see if 1000 runs solves it
 
-# Mortality and gross somatic gain =============================================
+# Mortality and gross somatic gain =================================================================
 
 # mortality
 vbgf_par <- vbgf_par %>% mutate(
@@ -101,7 +102,7 @@ summary(vbgf_par)
 vbgf_par <- vbgf_par %>% mutate(rareID = paste(DataID, gridcell, sep = '_')) %>% 
   select(rareID, SamplingEventID, Species, Size, Kmax:delta_g_day_u)
 
-# Apply to assemblage data =====================================================
+# Apply to assemblage data =========================================================================
 
 colnames(dt_rareass)
 dt_rareass <- dt_rareass %>% 
@@ -151,108 +152,6 @@ dt_prod$Area <- as.numeric(dt_prod$Area)
 # unit conversion
 dt_prod <- dt_prod %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
 
-## Figures ===================================================================
 
-require(ggplot2)
-require(patchwork)
-
-dt_div <- dt_rareass %>% distinct(rareID, DataID) %>% 
-  left_join(dt_div, ., by = "rareID")
-
-pretty <- theme_classic(base_size = 13, base_family = "Arial") +
-  theme(panel.border = element_blank(),
-        axis.line = element_line(linewidth = 0.3),
-        axis.ticks = element_line(linewidth = 0.3),
-        axis.ticks.length = unit(5, "points"),
-        axis.text = element_text(size = rel(1)),
-        strip.placement = 'inside',
-        strip.text = element_text(size = rel(1.1), hjust = 0, face = 'bold'),
-        strip.background = element_blank())
-
-# diversity
-f_asyS <- ggplot(data = dt_div %>% filter(metric == 'S_asy')) +
-  # geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
-  #             alpha = 0.2) +
-  geom_point(aes(x = Year, y = value, color = rareID), 
-             shape = 21, size = 2, alpha = 0.6) +
-  geom_smooth(aes(x = Year, y = value, color = rareID),
-              method = 'loess', se = F) +
-  guides(fill = 'none', color = 'none') +
-  scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
-  labs(y = 'Extrapolated species richness')
-
-f_S <- ggplot(data = dt_div %>% filter(metric == 'S')) +
-  # geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
-  #             alpha = 0.2) +
-  geom_point(aes(x = Year, y = value, color = rareID), 
-             shape = 21, size = 2, alpha = 0.6) +
-  geom_smooth(aes(x = Year, y = value, color = rareID),
-              method = 'loess', se = F) +
-  guides(fill = 'none', color = 'none') +
-  scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
-  labs(y = 'Species richness')
-
-f_prod <- ggplot(data = dt_prod) +
-  geom_point(aes(x = Year, y = prod_kg_yr, color = rareID),
-             shape = 21, size = 2, alpha = 0.6) +
-  geom_smooth(aes(x = Year, y = prod_kg_yr, color = rareID), method = 'loess', se = F) +
-  guides(fill = 'none', color = 'none') +
-  scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  labs(y = bquote("Biomass production (kg⋅ha"^-1~"⋅yr"^-1~")"))
-
-(f_S + f_asyS + f_prod) * pretty
-
-# together!
-
-f_proddiv <- left_join(dt_div, dt_prod, by = c('rareID', 'Year', 'SamplingEventID')) %>% 
-  filter(metric == 'S') %>% 
-  ggplot(data = .) +
-  geom_point(aes(x = value, y = prod_kg_yr, color = rareID)) +
-  guides(color = 'none') + pretty +
-  scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  labs(x = 'Species richness', y = bquote("Biomass production (kg⋅ha"^-1~"⋅yr"^-1~")"))
-
-f_proddiv
-f_proddiv * scale_y_log10()
-
-
-left_join(dt_div, dt_prod, by = c('rareID', 'Year', 'SamplingEventID')) %>% 
-  filter(metric == 'S_asy') %>% 
-  ggplot(data = .) +
-  geom_point(aes(x = value, y = prod_kg_yr, color = rareID)) +
-  guides(color = 'none') + pretty +
-  scale_color_cherulean(palette = 'cheridis', discrete = T) +
-  labs(x = 'Estimated species richness', 
-       y = bquote("Biomass production (kg⋅ha"^-1~"⋅yr"^-1~")")) +
-  scale_x_log10() + scale_y_log10()
-
-ggplot() +
-  # geom_ribbon(aes(x = Year, ymin = lwr, ymax = upr, fill = rareID),
-  #             alpha = 0.2) +
-  geom_point(data = dt_div %>% filter(metric == 'S'), 
-             aes(x = Year, y = value * 200, group = rareID), 
-             shape = 21, size = 2, alpha = 0.6, color = 'royalblue') +
-  geom_smooth(data = dt_div %>% filter(metric == 'S'),
-              aes(x = Year, y = value * 200, group = rareID),
-              method = 'loess', se = F, size = 0.75, color = 'royalblue') +
-  geom_point(data = dt_prod, 
-             aes(x = Year, y = prod_kg_yr, group = rareID), 
-             shape = 21, size = 2, alpha = 0.6, color = 'olivedrab') +
-  geom_smooth(data = dt_prod,
-              aes(x = Year, y = prod_kg_yr, group = rareID),
-              method = 'loess', se = F, size = 0.75, color = 'olivedrab') +
-  scale_y_continuous(name = "Productivity", 
-                     sec.axis = sec_axis(name = "Species richness", trans = ~. / 200)) +
-  labs(x = 'Year') + facet_wrap(vars(DataID), scales = 'free_x') + pretty
-
-
-(ggplot(data = vbgf_par) +
-    geom_density(aes(x = Kmax)) + pretty) +
-  
-(vbgf_par %>% group_by(Species) %>% summarise(Kmax_SD = sd(Kmax)) %>%
-  ggplot(data = .) +
-    geom_density(aes(x = Kmax_SD)) + pretty)
   
 
