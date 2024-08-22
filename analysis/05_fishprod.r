@@ -50,13 +50,13 @@ prodtrait <- mutate(prodtrait,
                     Size = case_when(Size > MaxSizeTL ~ MaxSizeTL - 0.1, 
                                      .default = Size))
 
-# Formula from Morais and Bellwood (2018) #
-growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
-
 # Kmax, growth coef ================================================================================
 
-# Kmax estimate per species-gridcell-year-dataID / species-samplingeventid-dataID
-# recommended boostrapts on 100s to 1000s scale
+# Formula from Morais and Bellwood (2018)
+growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
+
+# Kmax estimate per length-species-samplingeventid
+# recommended boostraps on 100s to 1000s scale
 set.seed(24)
 vbgf_par <- prodtrait %>% distinct %>% 
   predKmax(., dataset = dt_prodDB,
