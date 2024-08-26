@@ -3,23 +3,23 @@
 # Data checks, gridding, sample-based rarefaction
 
 
-# SET UP ---------------------------------------------------------
+# SET UP ===========================================================================================
 require(dplyr)
 require(stringr)
 require(readr)
-require(rfishbase)
-require(taxize)
 require(ggplot2)
 require(sf)
 require(rnaturalearth)
 require(dggridR)
 require(beepr)
 
-
 # global parameters
-G = 0.04 # grid cell size in sq km
+G = 0.04 # grid cell size in sq km 
 
-# GRID DATA --------------------------------------------------------------------
+# load in data
+dt_assemblage <- read_csv('./src/macro_reef_fish_clean.csv')
+
+# GRID DATA ========================================================================================
 # not all datasets use permanent locations
 # there is no way to determine time-series based on coordinates with multiple sampling regimes
 # so we need to grid by a reasonable resolution
@@ -30,106 +30,131 @@ proj = '+proj=eqearth +lon_0=160 +x_0=0 +y_0=0 +R=6371008.7714 +units=m +no_defs
 grid <- dgconstruct(area = G, metric = TRUE, resround = 'nearest')
 
 summary(dt_assemblage)
+
 # isolate out coordinates
 dt_coord <- dt_assemblage %>% distinct(DataID, Latitude, Longitude)
 grid_match <- dgGEO_to_SEQNUM(grid, dt_coord$Longitude, dt_coord$Latitude)
 length(grid_match$seqnum) == nrow(dt_coord)
-dt_coord$gridcell <- grid_match$seqnum # match with coordinates
+
+dt_coord$gridcell <- grid_match$seqnum # match grid with coordinates
 # merge this in
-View(dt_coord)
+# View(dt_coord)
 dt_assemblage <- left_join(dt_assemblage, dt_coord, by = c("DataID", "Latitude", "Longitude"))
 summary(dt_assemblage)
 
+# IDENTIFY TIME SERIES =============================================================================
 
-# RAREFY -----------------------------------------------------------
+# pull out rareIDs that are time-series
+timeseries <- dt_assemblage %>% group_by(DataID, gridcell) %>%
+  summarise(yearN = max(Year) - min(Year) + 1) %>% 
+  filter(yearN >= 2) %>% distinct(DataID, gridcell)
 
-# data structure now: dataset > grid cell > year > sampling event
+# length(timeseries) # 5108 study*gridcells
+
+# split the dataset between single and multiple year studies
+
+dt_single <- dt_assemblage[-which(dt_assemblage$DataID %in% timeseries$DataID & dt_assemblage$gridcell %in% timeseries$gridcell),]
+dt_time <- inner_join(dt_assemblage, timeseries, by = c('DataID', 'gridcell'))
+
+# RAREFY TIME SERIES ===============================================================================
+
+# data structure now: dataset > grid cell/rareID > year > sampling event
 # if there's any discrepancy in sampling effort within the grid cell
 # find minimum number of sampling events in a year across the time series
 # downsample the time-series years to match that number
 # consistent number of sampling events
 
+# this is only run on time series studies
+
+dt_time$rareID <- with(dt_time, paste(DataID, gridcell, sep = "_"))
+
 set.seed(24)
 
-# rarefy based on sampling events per year
-for (D in 1:n_distinct(dt_assemblage$DataID)) {
+# rarefy each gridcell for each study by lowest number of sampling events
+for (D in 1:nrow(timeseries)) {
 
-    dataid  <-  unique(dt_assemblage$DataID)[D]
+    dataid  <-  unique(dt_time$rareID)[D]
     # get the lowest common denominator across years rN
-    rN <- dt_assemblage %>% filter(DataID == dataid)  %>%
-        group_by(DataID, gridcell, Year) %>% 
+    rN <- dt_time %>% filter(rareID == dataid) %>%
+        group_by(Year) %>% 
         summarise(eventN = n_distinct(SamplingEventID))  %>%
         pull(eventN) %>% min() 
 
     # randomly select the sampling events
-    events <- dt_assemblage %>% filter(DataID == dataid) %>%
-    distinct(gridcell, Year, SamplingEventID) %>%
-    group_by(gridcell, Year) %>% sample_n(rN, replace = FALSE) %>%
+    events <- dt_time %>% filter(rareID == dataid) %>%
+    distinct(rareID, SamplingEventID, Year) %>%
+    group_by(rareID, Year) %>% sample_n(rN, replace = FALSE) %>%
     pull(SamplingEventID)
 
     # check if the new object exists yet
-    if (exists('dt_rareass') == F) {
-        dt_rareass <- dt_assemblage %>% 
-            filter(DataID == dataid, SamplingEventID %in% events)
+    if (D == 1) {
+        dt_rareass <- dt_time %>% 
+            filter(rareID == dataid, SamplingEventID %in% events)
     } else {
-        dt_rareass <- dt_assemblage %>% 
-            filter(DataID == dataid, SamplingEventID %in% events) %>%
+        dt_rareass <- dt_time %>% 
+            filter(rareID == dataid, SamplingEventID %in% events) %>%
             bind_rows(dt_rareass, .)
     }
 }
 
 # number of resampling iterations
-# creates sub datasets
-dt_rareass$iter <- 1 # if you choose to do multiple resampling iterations
-iter = 10
-
-for (D in 1:n_distinct(dt_assemblage$DataID)) {
-    dataid  <-  unique(dt_assemblage$DataID)[D]
+# creates sub datasets to calculate richness
+iter = 25
+dt_div <- dt_rareass %>% group_by(rareID, SamplingEventID) %>% 
+  summarise(S = n_distinct(worms_valid), iter = 1) %>% ungroup
+for (D in 1:n_distinct(dt_time$rareID)) {
+    dataid  <-  unique(dt_time$rareID)[D]
     # get the lowest common denominator across years rN
-    rN <- dt_assemblage %>% filter(DataID == dataid)  %>%
-        group_by(DataID, gridcell, Year) %>% 
-        summarise(eventN = n_distinct(SamplingEventID))  %>%
+    rN <- dt_time %>% filter(rareID == dataid) %>%
+        group_by(Year) %>% 
+        summarise(eventN = n_distinct(SamplingEventID)) %>%
         pull(eventN) %>% min() 
-    for (i in 1:(iter - 1)) { # rinse and repeat
+    for (i in 2:iter) { # rinse and repeat
         # randomly select the sampling events
-        events <- dt_assemblage %>% filter(DataID == dataid) %>%
-        distinct(gridcell, Year, SamplingEventID) %>%
-        group_by(gridcell, Year) %>% sample_n(rN, replace = FALSE) %>%
+        events <- dt_time %>% filter(rareID == dataid) %>%
+        distinct(rareID, SamplingEventID, Year) %>%
+        group_by(rareID, Year) %>% sample_n(rN, replace = FALSE) %>%
         pull(SamplingEventID)
 
-        dt_rareass <- dt_assemblage %>% 
-            filter(DataID == dataid, SamplingEventID %in% events) %>%
-            mutate(iter = i+1) %>% bind_rows(dt_rareass, .) # name the iteration
+        dt_div <- dt_time %>% 
+            filter(rareID == dataid, SamplingEventID %in% events) %>%
+          group_by(rareID, SamplingEventID) %>% 
+          summarise(S = n_distinct(worms_valid), iter = i) %>% ungroup %>%
+          bind_rows(dt_div, .) # name the iteration
     }
 }  
 beep()
-rm(i, rN, D, events, dataid, G)
+rm(i, rN, D, events, dataid, G, dt_time)
+
+# calculate intervals for richness
+# should not vary that much unless sampling effort varies a lot
+dt_div <- dt_div %>% group_by(DataID, gridcell, SamplingEventID) %>% 
+  summarise(S = median(S), S_lwr = quantile(S, 0.025), S_upr = quantile(S, 0.975)) %>% ungroup
+
 # generate rarefy ID (= DataID x grid cell)
 summary(dt_rareass)
-dt_rareass$rareID <- with(dt_rareass, paste(DataID, gridcell, sep = "_"))
+
 
 
 # DATA CHECKS -----------------------------------------------------------
 # check the rarefied, gridded time series
-sum(is.na(dt_rareass$gridcell))
-sum(str_detect(dt_rareass$rareID, 'NA$'))
-
-summary(dt_rareass)
-# time series durations
-dt_rareass %>% group_by(rareID) %>% 
-    summarise(yearN = max(Year) - min(Year) + 1) %>% summary
-
-dt_rareass %>% group_by(rareID) %>% 
-    summarise(yearN = max(Year) - min(Year) + 1) %>%
-    pull(yearN) %>% hist
-
-# rarefaction check
-dt_rareass %>% group_by(rareID, Year) %>%
-    summarise(samplingN = n_distinct(SamplingEventID)) %>%
-    ungroup() %>% group_by(sxrareID) %>%
-    summarise(min_samp = min(samplingN), max_samp = max(samplingN),
-    consistent = case_when(min_samp == max_samp ~ 'Y', 
-                           min_samp != max_samp ~ 'N')) %>%
-    filter(consistent == 'N') # any rarefaction failures
-
-detach(package:taxize)
+# sum(is.na(dt_rareass$gridcell))
+# sum(str_detect(dt_rareass$rareID, 'NA$'))
+# 
+# summary(dt_rareass)
+# # time series durations
+# dt_rareass %>% group_by(rareID) %>% 
+#     summarise(yearN = max(Year) - min(Year) + 1) %>% summary
+# 
+# dt_rareass %>% group_by(rareID) %>% 
+#     summarise(yearN = max(Year) - min(Year) + 1) %>%
+#     pull(yearN) %>% hist
+# 
+# # rarefaction check
+# dt_rareass %>% group_by(rareID, Year) %>%
+#     summarise(samplingN = n_distinct(SamplingEventID)) %>%
+#     ungroup() %>% group_by(rareID) %>%
+#     summarise(min_samp = min(samplingN), max_samp = max(samplingN),
+#     consistent = case_when(min_samp == max_samp ~ 'Y', 
+#                            min_samp != max_samp ~ 'N')) %>%
+#     filter(consistent == 'N') # any rarefaction failures
