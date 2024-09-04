@@ -1,7 +1,7 @@
 
 
 # ProducDiv
-# Calculate diversity
+# Calculate asymptotic diversity
 
 require(iNEXT)
 require(dplyr)
@@ -9,18 +9,6 @@ require(ggplot2)
 require(beepr)
 
 # requires 01_gridding for the data source
-# iter should also be an inherited parameter
-
-# observed richness
-dt_div <- dt_rareass %>%
-    # for each sampling event!
-    group_by(rareID, SamplingEventID, Year) %>%
-    # calculate richness for each iteration
-    summarise(value = n_distinct(genus_sp), metric = 'S') %>% 
-    ungroup() %>% arrange(rareID)
-    
-
-head(dt_div)
 
 # asymptotic species richness
 # use dt_div to index since it's already structured by rareID + samplingevents
@@ -29,7 +17,7 @@ head(dt_div)
 # for all the sampling events in each rareID
 for (R in 1:n_distinct(dt_div$rareID)) {
   
-  rare_id =unique(dt_div$rareID)[R]
+  rare_id = unique(dt_div$rareID)[R]
   
   # prep data input for iNEXT
   # wide format. rows = species. cols = time/space

@@ -18,6 +18,7 @@ G = 0.04 # grid cell size in sq km
 
 # load in data
 dt_assemblage <- read_csv('./src/macro_reef_fish_clean.csv')
+dt_meta <- read_csv('./src/macro_reef_fish_meta.csv')
 
 # GRID DATA ========================================================================================
 # not all datasets use permanent locations
@@ -56,6 +57,33 @@ timeseries <- dt_assemblage %>% group_by(DataID, gridcell) %>%
 dt_single <- dt_assemblage[-which(dt_assemblage$DataID %in% timeseries$DataID & dt_assemblage$gridcell %in% timeseries$gridcell),]
 dt_time <- inner_join(dt_assemblage, timeseries, by = c('DataID', 'gridcell'))
 
+# full unrarefied raw data
+# dt_single
+# dt_time
+# dt_assemblage
+
+# LOCATION FIELD ===================================================================================
+
+dt_meta %>% filter(DataID %in% dt_time$DataID) %>% 
+  select(DataID, SamplingEventStructure) %>% View
+dt_time$Location <- NA
+
+dt_time <- mutate(dt_time, 
+                     Location = case_when(.default = NA,
+                                          DataID == '020_noaa_micronesia' ~ str_extract(SamplingEventID, '(?<=^\\d{4}\\_)[A-Z0-9a-z\\-]+(?=\\_)'),
+                                          DataID == '031_crane_ulithi' ~ str_extract(SamplingEventID, '(?<=\\_)[A-Za-z]+(?=\\_)'),
+                                          DataID == '054_RLS' ~ str_extract(SamplingEventID, '^[A-Z0-9]+(?=\\_)'),
+                                          DataID == '122_SIFkoester_aldabra' ~ str_extract(SamplingEventID, '^[A-Z0-9]+(?=\\_)'),
+                                          DataID == 'BT45_moorea_lter' ~ str_extract(SamplingEventID, '^\\d\\_[A-Z]+')
+                     ))
+
+dt_time %>% filter(is.na(Location) == F) %>% distinct(DataID, SamplingEventID, Location) %>% 
+  group_by(DataID) %>% sample_n(4) %>% View
+
+dt_time %>% filter(is.na(Location) == F) %>% group_by(rareID) %>% 
+  summarise(locationN = n_distinct(Location)) %>% 
+  filter(locationN >1) %>% View
+
 # RAREFY TIME SERIES ===============================================================================
 
 # data structure now: dataset > grid cell/rareID > year > sampling event
@@ -73,7 +101,7 @@ set.seed(24)
 # rarefy each gridcell for each study by lowest number of sampling events
 for (D in 1:nrow(timeseries)) {
 
-    dataid  <-  unique(dt_time$rareID)[D]
+    dataid <- unique(dt_time$rareID)[D]
     # get the lowest common denominator across years rN
     rN <- dt_time %>% filter(rareID == dataid) %>%
         group_by(Year) %>% 
@@ -95,66 +123,114 @@ for (D in 1:nrow(timeseries)) {
             filter(rareID == dataid, SamplingEventID %in% events) %>%
             bind_rows(dt_rareass, .)
     }
+    print(paste0("Iteration ", D, " complete"))
 }
+
+# ITERATE RICHNESS =================================================================================
+
+set.seed(24)
 
 # number of resampling iterations
 # creates sub datasets to calculate richness
 iter = 25
-dt_div <- dt_rareass %>% group_by(rareID, SamplingEventID) %>% 
+dt_div <- dt_rareass %>% group_by(rareID, Location, SamplingEventID) %>% 
   summarise(S = n_distinct(worms_valid), iter = 1) %>% ungroup
+
 for (D in 1:n_distinct(dt_time$rareID)) {
     dataid  <-  unique(dt_time$rareID)[D]
-    # get the lowest common denominator across years rN
-    rN <- dt_time %>% filter(rareID == dataid) %>%
+    
+    # if this rareID has the additional location field
+    if ((is.na(dt_time %>% filter(rareID == dataid) %>% pull(Location)) == F) |> sum() != 0) {
+      
+      L = dt_time %>% filter(rareID == dataid) %>% pull(Location) %>% unique
+      
+      for (l in 1:nrow(L)) { # each location
+        loc = L[l]
+        # get the lowest common denominator across years rN
+        rN <- dt_time %>% filter(rareID == dataid, Location == loc) %>%
+          group_by(Year) %>% 
+          summarise(eventN = n_distinct(SamplingEventID)) %>%
+          pull(eventN) %>% min()
+        
+        for (i in 2:iter) { # rinse and repeat
+          # randomly select the sampling events
+          events <- dt_time %>% filter(rareID == dataid, Location == loc) %>%
+            distinct(SamplingEventID, Year) %>%
+            group_by(Year) %>% sample_n(rN, replace = FALSE) %>%
+            pull(SamplingEventID)
+          
+          dt_div <- dt_time %>% 
+            filter(rareID == dataid, Location == loc, SamplingEventID %in% events) %>%
+            group_by(rareID, Location, SamplingEventID) %>% 
+            summarise(S = n_distinct(worms_valid), iter = i) %>% ungroup %>%
+            bind_rows(dt_div, .) # name the iteration
+          
+          if (exists('complete') == F) {
+            complete = 1
+          } else complete = complete + 1
+          
+          print(paste0("Iteration ", complete, " complete"))
+        } 
+      }
+      
+    } else {
+      
+      rN <- dt_time %>% filter(rareID == dataid) %>%
         group_by(Year) %>% 
         summarise(eventN = n_distinct(SamplingEventID)) %>%
-        pull(eventN) %>% min() 
-    for (i in 2:iter) { # rinse and repeat
+        pull(eventN) %>% min()
+      
+      for (i in 2:iter) { # rinse and repeat
         # randomly select the sampling events
         events <- dt_time %>% filter(rareID == dataid) %>%
-        distinct(rareID, SamplingEventID, Year) %>%
-        group_by(rareID, Year) %>% sample_n(rN, replace = FALSE) %>%
-        pull(SamplingEventID)
-
+          distinct(SamplingEventID, Year) %>%
+          group_by(Year) %>% sample_n(rN, replace = FALSE) %>%
+          pull(SamplingEventID)
+        
         dt_div <- dt_time %>% 
-            filter(rareID == dataid, SamplingEventID %in% events) %>%
+          filter(rareID == dataid, SamplingEventID %in% events) %>%
           group_by(rareID, SamplingEventID) %>% 
           summarise(S = n_distinct(worms_valid), iter = i) %>% ungroup %>%
           bind_rows(dt_div, .) # name the iteration
+        
+        if (exists('complete') == F) {
+          complete = 1
+        } else complete = complete + 1
+        print(paste0("Iteration ", complete, " complete"))
+      }
     }
 }  
 beep()
 rm(i, rN, D, events, dataid, G, dt_time)
 
-# calculate intervals for richness
-# should not vary that much unless sampling effort varies a lot
-dt_div <- dt_div %>% group_by(DataID, gridcell, SamplingEventID) %>% 
+# calculate richness confidence intervals
+# across the iterations for each sampling event
+dt_div <- dt_div %>% group_by(rareID, SamplingEventID) %>% 
   summarise(S = median(S), S_lwr = quantile(S, 0.025), S_upr = quantile(S, 0.975)) %>% ungroup
 
-# generate rarefy ID (= DataID x grid cell)
 summary(dt_rareass)
 
 
 
-# DATA CHECKS -----------------------------------------------------------
+# DATA CHECKS ======================================================================================
 # check the rarefied, gridded time series
-# sum(is.na(dt_rareass$gridcell))
-# sum(str_detect(dt_rareass$rareID, 'NA$'))
-# 
-# summary(dt_rareass)
-# # time series durations
-# dt_rareass %>% group_by(rareID) %>% 
-#     summarise(yearN = max(Year) - min(Year) + 1) %>% summary
-# 
-# dt_rareass %>% group_by(rareID) %>% 
-#     summarise(yearN = max(Year) - min(Year) + 1) %>%
-#     pull(yearN) %>% hist
-# 
-# # rarefaction check
-# dt_rareass %>% group_by(rareID, Year) %>%
-#     summarise(samplingN = n_distinct(SamplingEventID)) %>%
-#     ungroup() %>% group_by(rareID) %>%
-#     summarise(min_samp = min(samplingN), max_samp = max(samplingN),
-#     consistent = case_when(min_samp == max_samp ~ 'Y', 
-#                            min_samp != max_samp ~ 'N')) %>%
-#     filter(consistent == 'N') # any rarefaction failures
+sum(is.na(dt_rareass$gridcell))
+sum(str_detect(dt_rareass$rareID, 'NA$'))
+
+summary(dt_rareass)
+# time series durations
+dt_rareass %>% group_by(rareID) %>%
+    summarise(yearN = max(Year) - min(Year) + 1) %>% summary
+
+# rarefaction check
+dt_rareass %>% group_by(rareID, Year) %>%
+    summarise(samplingN = n_distinct(SamplingEventID)) %>%
+    ungroup() %>% group_by(rareID) %>%
+    summarise(min_samp = min(samplingN), max_samp = max(samplingN),
+    consistent = case_when(min_samp == max_samp ~ 'Y',
+                           min_samp != max_samp ~ 'N')) %>%
+    filter(consistent == 'N') # any rarefaction failures
+
+# removed 036_noaa_sefsc_5916040223 because the sampling events come from multiple years
+
+
