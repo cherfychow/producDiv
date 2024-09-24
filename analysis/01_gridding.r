@@ -184,7 +184,7 @@ iter = 25
 dt_div <- dt_rareass %>% group_by(rareID, Location, SamplingEventID) %>% 
   summarise(S = n_distinct(worms_valid), iter = 1) %>% ungroup
 
-for (D in 1:nrow(timeseries)) { # per rareID
+for (D in str_which(timeseries$DataID, 'gbraims')[451:519]) { # per rareID
   dataid <- timeseries$rareID[D]
   L = dt_time %>% filter(rareID == dataid) %>% pull(Location) %>% unique
   

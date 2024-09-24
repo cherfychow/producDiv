@@ -52,6 +52,7 @@ for (R in 1:nrow(dt_div)) {
                       metric = 'S_asy',
                       value = NA) %>% bind_rows(S_asy, .)
     }
+    print(paste0('Iteration ', R, ' failed'))
     next
   }
   
@@ -72,9 +73,11 @@ for (R in 1:nrow(dt_div)) {
       rename(value = Estimator, lwr = LCL, upr = UCL) %>%
       bind_rows(S_asy, .)
   }
-  print(paste0("Iteration", R, ' done'))
+  print(paste0("Iteration ", R, ' of ', nrow(dt_div), ' done'))
+  
+  save(S_asy, file = 'asydiv.RData')
 }
-save.image('02_div.RData')
+
 # beep()
 # 
 # 
