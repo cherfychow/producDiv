@@ -1,6 +1,7 @@
 
 # ProducDiv
 # Data checks, gridding, sample-based rarefaction
+# also calculates observed species richness during rarefaction
 
 
 # SET UP ===========================================================================================
@@ -184,7 +185,7 @@ iter = 25
 dt_div <- dt_rareass %>% group_by(rareID, Location, SamplingEventID) %>% 
   summarise(S = n_distinct(worms_valid), iter = 1) %>% ungroup
 
-for (D in str_which(timeseries$DataID, 'gbraims')[451:519]) { # per rareID
+for (D in 1:nrow(timeseries)) { # per rareID
   dataid <- timeseries$rareID[D]
   L = dt_time %>% filter(rareID == dataid) %>% pull(Location) %>% unique
   
@@ -263,6 +264,8 @@ summary(dt_rareass)
 summary(dt_div)
 dt_div %>% filter(S == 1) %>% View
 
+ggplot(data = dt_div) +
+  geom_histogram(aes(x = S)) + theme_classic()
 
 # DATA CHECKS ======================================================================================
 # check the rarefied, gridded time series
@@ -279,11 +282,6 @@ dt_div <- mutate(dt_div,
 # time series durations
 dt_rareass %>% group_by(seriesID) %>%
     summarise(yearN = max(Year) - min(Year) + 1) %>% View
-
-# some after gridding turned out to be single-year
-single_series <- dt_rareass %>% group_by(seriesID) %>%
-  summarise(yearN = max(Year) - min(Year) + 1) %>% filter(yearN == 1) %>%
-  pull(seriesID)
 
 # migrate and remove from time series data
 dt_single <- dt_rareass %>% filter(seriesID %in% single_series) %>% select(!c(rareID, seriesID, Location)) %>% 
@@ -309,3 +307,14 @@ dt_rareass <- dt_rareass %>%
 dt_single <- dt_time %>% 
   filter(rareID %in% c('036_noaa_sefsc_5916040223', '036_noaa_sefsc_5925251511')) %>% 
   select(!c(Location, rareID)) %>% bind_rows(dt_single, .)
+
+
+# CALCULATE RICHNESS FOR SINGLE YEAR STUDIES =======================================================
+
+dt_div_single <- dt_single %>% mutate(rareID = paste(DataID, gridcell, sep = '_')) %>%
+  group_by(rareID, SamplingEventID) %>%
+  summarise(S = n_distinct(worms_valid))
+summary(dt_div_single)
+
+ggplot(data = dt_div_single) +
+  geom_histogram(aes(x = S)) + theme_classic()
