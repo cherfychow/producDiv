@@ -324,3 +324,4 @@ dt_traits %>% group_by(fishbase_valid) %>% mutate(n = n()) %>% filter(n > 1) %>%
 dt_traits <- dt_traits %>% distinct(fishbase_valid, .keep_all = T)
 
 # readr::write_csv(dt_traits, './src/traits_final.csv')
+# write_csv(dt_sp, './src/dt_species_clean.csv')
