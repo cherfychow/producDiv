@@ -1,6 +1,7 @@
 
 # ProducDiv
 # Compile traits for productivity modelling
+# runs independently from the analysis pipeline
 
 require(dplyr)
 require(readr)
@@ -10,24 +11,31 @@ require(rfishbase)
 
 # SETUP ============================================================================================
 
-dt_prodDB <- rfishprod::db
-dt_assemblage <- bind_rows(dt_rareass, dt_single) # write over with rarefied
-dt_assemblage %>% filter(is.na(fishbase_valid), taxon_resolution == 'species') %>% 
-  distinct(worms_valid, fishbase_valid) %>% View
-dt_rareass$fishbase_valid[dt_rareass$worms_valid == 'Haemulon atlanticus'] <- 'Haemulon atlanticus'
+dt_sp <- read_csv('src/dt_species.csv')
 
-# species list to compile traits for
-allsp <- dt_assemblage %>% 
-  filter(taxon_resolution %in% c('genus', 'species')) %>%
-  distinct(fishbase_valid) %>%
-  mutate(fishbase_valid = str_remove(fishbase_valid, '\\d+')) %>% 
-  # collapse known uncertains because they don't matter for productivity
-  pull(fishbase_valid) %>% na.omit %>% unique %>% sort # remove NAs
-# View(allsp)
+dt_prodDB <- rfishprod::db
+dt_sp %>% filter(is.na(fishbase_valid), taxon_resolution == 'species') %>% View
+dt_sp %>% filter(taxon_resolution == 'species') %>% 
+  arrange(fishbase_valid) %>% distinct(fishbase_valid) %>% View
+dt_sp %>% filter(taxon_resolution == 'lowres') %>% View
+dt_sp$fishbase_valid[dt_sp$taxon_resolution == 'lowres'] <- NA
+
+# make a backbone to compile traits
+# fishbase_valid as the matching key to taxaID
+dt_traits_sp <- dt_sp %>% 
+  filter(is.na(fishbase_valid) == F, taxon_resolution == 'species') %>% 
+  distinct(fishbase_valid) %>% arrange(fishbase_valid)
+
+dt_traits_g <- dt_sp %>% distinct(fishbase_valid) %>% 
+  filter(is.na(fishbase_valid) == F, str_detect(fishbase_valid, 'sp$')) %>% 
+  arrange(fishbase_valid)
+
+dt_traits_f <- dt_sp %>%
+  filter(is.na(fishbase_valid) == F, taxon_resolution == 'family') %>% 
+  distinct(fishbase_valid) %>% arrange(fishbase_valid)
 
 # traits compiled in earlier tests
-dt_traits <- read_csv('./src/manual_traits_sandbox.csv')
-allsp[-which(allsp %in% dt_traits$Species|allsp %in% dt_prodDB$Species)] %>% length
+sandbox_traits <- read_csv('./src/manual_traits_sandbox.csv')
 # use up existing sources first
 
 # FILLING IN TRAITS WE ALREADY HAVE ================================================================
@@ -108,308 +116,211 @@ dt_prodDB <- rename(dt_prodDB, Diet = Diet_Par)
 rm(gaspar, db_sp_troph)
 
 
-## REMERGE ====================================================================
+## TRY TO MATCH BACK IN ====================================================================
 
 rm(fishbase_traits, trait_compile) # remove the objects that helped with manual filling
 
 traits_full <- read_csv('./src/manual_traits_full.csv')
 traits_full <- distinct(traits_full)
-# make sure it doesn't overlap with dt_traits
-traits_full <- traits_full %>% filter(!Species %in% dt_traits$Species)
-traits_full$Diet <- NULL
+# make sure it doesn't overlap with sandbox_traits
+traits_full <- traits_full %>% filter(!Species %in% sandbox_traits$Species)
 
-# manual name fixes: FISHBASE
-replace = c('Bodianus pulcher' = 'Semicossyphus pulcher',
-            'Carangoides gymnostethus' = 'Turrum gymnostethus',
-            'Compsanthias hawaiiensis' = 'Pseudanthias hawaiiensis',
-            'Compsanthias ventralis' = 'Pseudanthias ventralis',
-            'Neosynchiropus ocellatus' = 'Synchiropus ocellatus',
-            'Ostracion cubicus' = 'Ostracion cubicum',
-            'Oxycheilinus digrammus' = 'Oxycheilinus digramma',
-            'Plectorhinchus multivittatum' = 'Plectorhinchus multivittatus',
-            'Plectroglyphidodon lacrymatus' = 'Stegastes lacrymatus',
-            'Premnas biaculeatus' = 'Amphiprion biaculeatus',
-            'Sufflamen fraenatus' = 'Sufflamen fraenatum',
-            'Tylosurus crocodilus crocodilus' = 'Tylosurus crocodilus',
-            'Astroscopus y-graecum' = 'Astroscopus ygraecum',
-            'Cantherhines dumerili' = 'Cantherhines dumerilii',
-            'Carangoides orthogrammus' = 'Ferdauia orthogrammus',
-            'Chromis agilis' = 'Pycnochromis agilis',
-            'Chromis amboinensis' = 'Pycnochromis amboinensis',
-            'Chromis atripes' = 'Pycnochromis atripes',
-            'Chromis iomelas' = 'Pycnochromis iomelas',
-            'Chromis margaritifer' = 'Pycnochromis margaritifer',
-            'Chromis multilineata' = 'Azurina multilineata',
-            'Chromis retrofasciata' = 'Pycnochromis retrofasciatus',
-            'Chromis vanderbilti' = 'Pycnochromis vanderbilti',
-            'Cromileptes altivelis' = 'Chromileptes altivelis',
-            'Grammatorycnus' = 'Grammatorcynus',
-            'Plectorhinchus unicolor' = 'Plectorhinchus schotaf',
-            'Pseudanthias bartlettorum' = 'Nemanthias bartlettorum',
-            'Pseudanthias dispar' = 'Nemanthias dispar')
+traits_full$Diet <- NULL # remove, it was just helping us fill in
+# fishbase updated while we were compiling
 
-# manual name fixes: WoRMS
-replace_worms = c('Centropyge bispinosus' = 'Centropyge bispinosa',
-                  'Centropyge flavissimus' = 'Centropyge flavissima',
-                  'Cantherhines dumerili' = 'Cantherhines dumerilii',
-                  'Archamia fucata' = 'Taeniamia fucata',
-                  'Chromis agilis' = 'Pycnochromis agilis',
-                  'Chromis lepidolepis' = 'Azurina lepidolepis',
-                  'Chromis lineata' = 'Pycnochromis lineatus',
-                  'Plectroglyphidodon lacrymatus' = 'Stegastes lacrymatus',
-                  'Oxycheilinus digrammus' = 'Oxycheilinus digramma',
-                  'Tylosurus crocodilus crocodilus' = 'Tylosurus crocodilus',
-                  'Sufflamen fraenatus' = 'Sufflamen fraenatum',
-                  'Chromis agilis' = 'Pycnochromis agilis',
-                  'Chromis amboinensis' = 'Pycnochromis amboinensis',
-                  'Chromis atripes' = 'Pycnochromis atripes',
-                  'Chromis iomelas' = 'Pycnochromis iomelas',
-                  'Chromis margaritifer' = 'Pycnochromis margaritifer',
-                  'Chromis multilineata' = 'Azurina multilineata',
-                  'Chromis retrofasciata' = 'Pycnohromis retrofasciatus',
-                  'Chromis vanderbilti' = 'Pycnohromis vanderbilti',
-                  'Grammatorycnus' = 'Grammatorcynus',
-                  'Plectorhinchus unicolor' = 'Plectorhinchus schotaf')
+traits_full <- traits_full %>% filter(!str_detect(Species, 'Menaphorus|aff\\.'))
+traits_full$Species <- str_remove(traits_full$Species, 'cf\\.\\s|[:punct:]')
+traits_full %>% filter(Species %in% dt_traits_sp$fishbase_valid == F) %>% View
 
-# replace these manual catches first
-dt_assemblage %>% distinct(fishbase_valid, worms_valid) %>% filter(worms_valid %in% names(replace_worms))
-dt_assemblage %>% distinct(fishbase_valid, worms_valid) %>% filter(fishbase_valid %in% names(replace))
-dt_assemblage %>% distinct(fishbase_valid, worms_valid) %>% filter(worms_valid %in% names(replace))
+# known hybrids/too new species
+traits_full <- traits_full %>% filter(!str_detect(Species, 'maafu'))
+traits_full$Species[traits_full$Species == 'Holacanthus townsendi'] <- 'Holacanthus bermudensis'
 
-# in main data
-# fishbase name function = match traits
-dt_assemblage$worms_valid <- str_replace_all(dt_assemblage$worms_valid, replace_worms)
-dt_assemblage$fishbase_valid <- str_replace_all(dt_assemblage$fishbase_valid, replace)
-dt_rareass$worms_valid <- str_replace_all(dt_rareass$worms_valid, replace_worms)
-dt_rareass$fishbase_valid <- str_replace_all(dt_rareass$fishbase_valid, replace)
-dt_single$worms_valid <- str_replace_all(dt_single$worms_valid, replace_worms)
-dt_single$fishbase_valid <- str_replace_all(dt_single$fishbase_valid, replace)
-dt_assemblage$worms_valid[dt_assemblage$fishbase_valid == 'Oxycheilinus unifasciatus'] <- 'Oxycheilinus unifasciatus'
-dt_rareass$worms_valid[dt_rareass$fishbase_valid == 'Oxycheilinus unifasciatus'] <- 'Oxycheilinus unifasciatus'
-dt_single$worms_valid[dt_single$fishbase_valid == 'Oxycheilinus unifasciatus'] <- 'Oxycheilinus unifasciatus'
-dt_assemblage$fishbase_valid <- str_remove(dt_assemblage$fishbase_valid, 'cf\\.*\\s')
-dt_rareass$fishbase_valid <- str_remove(dt_rareass$fishbase_valid, 'cf\\.*\\s')
-dt_single$fishbase_valid <- str_remove(dt_single$fishbase_valid, 'cf\\.*\\s')
+# try have fishbase revalidate, but kind of manual
+temp <- tibble(fishbase_valid = validate_names(traits_full$Species))
+temp <- temp[-1404,]
+traits_full <- bind_cols(traits_full, temp)
+traits_full %>% filter(is.na(fishbase_valid))
+traits_full <- traits_full[-which(traits_full$Species == 'Hypoplectrus hybrid'),]
+traits_full$Species[traits_full$Species == 'Bodianus pulcher'] <- 'Semicossyphus pulcher'
+traits_full$fishbase_valid[is.na(traits_full$fishbase_valid)] <- traits_full$Species[is.na(traits_full$fishbase_valid)]
+traits_full[is.na(traits_full$fishbase_valid),] # any left? great!
+rm(temp)
 
-# in traits
-dt_traits$Species <- str_replace_all(dt_traits$Species, replace) # for fishbase compatibility
-traits_full$Species <- str_replace_all(traits_full$Species, replace)
-dt_traits$Species <- str_remove(dt_traits$Species, 'cf\\.*\\s')
-traits_full$Species <- str_remove(traits_full$Species, 'cf\\.*\\s')
+traits_full %>% select(!Species) %>% distinct %>% nrow
+traits_full %>% filter(fishbase_valid %in% dt_traits_sp$fishbase_valid) %>% nrow
+dt_traits_sp$fishbase_valid[which(dt_traits_sp$fishbase_valid %in% traits_full$fishbase_valid == F & dt_traits_sp$fishbase_valid %in% sandbox_traits$Species == F)]
 
-# check if stringr did its job
-dt_assemblage %>% distinct(worms_valid, fishbase_valid) %>% filter(worms_valid %in% names(replace_worms))
-dt_assemblage %>% distinct(worms_valid, fishbase_valid) %>% filter(fishbase_valid %in% names(replace))
-dt_traits %>% filter(Species %in% names(replace))
-traits_full %>% filter(Species %in% names(replace))
+sandbox_traits$fishbase_valid <- validate_names(sandbox_traits$Species)
+dt_traits_sp <- dt_traits_sp %>% filter(!str_detect(fishbase_valid, 'sp$'))
+# species level records with genus level trait matching. just delete, covered by genus table
 
 ## MATCH L-W MAXLENGTH =================================================
 
+missLab <- dt_traits_sp$fishbase_valid[dt_traits_sp$fishbase_valid %in% sandbox_traits$fishbase_valid == F]
+
 # extract MaxLength, a, b estimates from FishBase
-Lab <- estimate(traits_full$Species, fields = c('Species', 'MaxLengthTL', 'a', 'b'))
-Lab <- distinct(Lab)
-nrow(traits_full) - nrow(Lab) # 36 species not matching with fishbase
+Lab <- estimate(missLab, fields = c('Species', 'MaxLengthTL', 'a', 'b')) %>% distinct
+Lab %>% filter(is.na(MaxLengthTL)) %>% View
+Lab %>% filter(is.na(a)) %>% View # only issues with length-weight params
 
-missing_Lab <- traits_full %>% filter(Species %in% Lab$Species == F) %>% select(Species)
-missing_Lab$fb_valid <- validate_names(missing_Lab$Species)
-# some species need revalidating because fishbase contradicts itself front and backend
-missing_Lab$fb_valid[missing_Lab$fb_valid == 'Genus Species'] = NA
-missing_Lab$fb_valid[str_detect(missing_Lab$Species, 'Pycno')] <- missing_Lab$Species[str_detect(missing_Lab$Species, 'Pycno')]
-missing_Lab$fb_valid <- str_replace(missing_Lab$fb_valid, 'Pycnohromis', 'Pycnochromis')
-missing_Lab$fb_valid[missing_Lab$Species == 'Holacanthus townsendi'] = 'Holacanthus bermudensis'
-missing_Lab$fb_valid[missing_Lab$Species == 'Pomacentrus maafu'] = 'Pomacentrus moluccensis'
-
-# for the purposes of trait matching, open nomenclature will either go to closest relative values or Genus level
-missing_Lab$fb_valid[str_which(missing_Lab$Species, 'aff\\.|hybrid')] <- missing_Lab$Species[str_which(missing_Lab$Species, 'aff\\.|hybrid')] %>%
-  str_replace(., 'aff\\.|hybrid', 'sp')
-
-# match
-missing_Lab <- estimate(missing_Lab$fb_valid, fields = c('Species', 'MaxLengthTL', 'a', 'b')) %>% 
-  left_join(missing_Lab, ., by = c('fb_valid' = 'Species'))
-
-rm(replace, replace_worms)
-replace_fb <- missing_Lab$fb_valid
-names(replace_fb) <- missing_Lab$Species
-
-# fix these names in main and trait data
-dt_assemblage$fishbase_valid <- str_replace_all(dt_assemblage$fishbase_valid, replace_fb)
-dt_rareass$fishbase_valid <- str_replace_all(dt_rareass$fishbase_valid, replace_fb)
-dt_single$fishbase_valid <- str_replace_all(dt_single$fishbase_valid, replace_fb)
-dt_assemblage$worms_valid <- str_replace(dt_assemblage$worms_valid, 'Pycnohromis', 'Pycnochromis')
-dt_rareass$worms_valid <- str_replace(dt_rareass$worms_valid, 'Pycnohromis', 'Pycnochromis')
-dt_single$worms_valid <- str_replace(dt_single$worms_valid, 'Pycnohromis', 'Pycnochromis')
-traits_full$Species <- str_replace_all(traits_full$Species, replace_fb)
-traits_full <- distinct(traits_full)
-
-# merge with the full Lab table
-Lab <- missing_Lab %>% select(!Species) %>% rename(Species = fb_valid) %>% 
-  filter(Species %in% Lab$Species == F) %>% 
-  bind_rows(Lab, .) %>% 
-  arrange(Species) %>% distinct
-summary(Lab)
-
-# merge with manually compiled diet and position traits
-traits_full <- left_join(traits_full, Lab, by = 'Species')
-rm(Lab, missing_Lab, replace_fb)
-
-# check if there's any overlap with dt_traits
-inner_join(traits_full, dt_traits, by = 'Species')
-traits_full %>% filter(Species %in% dt_traits$Species) # yep 16 species overlapped
-
-# match in
-traits_full <- traits_full %>% filter(!Species %in% dt_traits$Species) %>% 
-  rename(MaxSizeTL = MaxLengthTL, Diet = Diet_Par) %>% 
-  mutate(Genus = word(Species, 1))
-
-genfam <- dt_assemblage %>% distinct(fishbase_valid, worms_valid, genus_valid, family_valid) %>% 
-  filter(fishbase_valid %in% traits_full$Species) %>% distinct(genus_valid, family_valid)
-traits_full <- left_join(traits_full, genfam, by = c('Genus' = 'genus_valid'))
-traits_missing <- traits_full %>% filter(is.na(a) | is.na(MaxSizeTL)) # fishbase hates anthias
-traits_full <- traits_full %>% filter(!is.na(a))
-summary(traits_full)
+failab <- Lab %>% filter(is.na(a)) # isolate to fix
+Lab <- Lab %>% filter(!is.na(a))
 
 # give Chromis anadema the l-w for C. xanhura
-traits_missing[7,5] <- 0.01413
-traits_missing[7,6] <- 2.94
-traits_missing <- traits_missing %>% filter(!str_detect(Species, '\\ssp$'))
+failab[which(failab$Species == 'Chromis anadema'),3:4] <- list(0.01413, 2.94) 
+# is everything else anthias? yes
+dt_sp %>% filter(fishbase_valid %in% failab$Species) %>% select(family_valid, fishbase_valid) %>% View
+
 # Handle Anthiadidae
-traits_missing$family_valid[traits_missing$family_valid != 'Pomacentridae' | is.na(traits_missing$family_valid)] <- 'Anthiadidae'
 # only 17 values for the whole family... give family level mean
-traits_missing <- traits_missing %>% mutate(a = case_when(is.na(a) ~ 0.02515, .default = a),
-                                           b = case_when(is.na(b) ~ 2.96048375, .default = b))
+failab <- failab %>% mutate(a = case_when(is.na(a) ~ 0.02515, .default = a),
+                            b = case_when(is.na(b) ~ 2.96048375, .default = b))
+Lab <- bind_rows(Lab, failab) %>% arrange(Species) # merge missing in
+# merge in sandbox MaxLength, a, b
+colnames(Lab)[2] <- 'MaxSizeTL'
+colnames(Lab)[1] <- 'fishbase_valid'
+Lab <- sandbox_traits %>% select(fishbase_valid, MaxSizeTL, a, b) %>% 
+  filter(is.na(fishbase_valid) == F) %>% # only the species for now
+  bind_rows(., Lab) # merge
+  
+# join in with skeleton
+dt_traits_sp <- left_join(dt_traits_sp, Lab, by = 'fishbase_valid')
+summary(dt_traits_sp)
+rm(Lab)
+rm(failab)
 
-# merge back in
-traits_full <- bind_rows(traits_full, traits_missing) %>% arrange(Species)
-summary(traits_full)
+# temp <- read_csv('src/missing2.csv')
+# traits_full <- temp %>% select(fishbase_valid, Diet, Position) %>% bind_rows(traits_full, .)
 
-# merge in with the FULL trait table
-traits_full %>% rename(Family = family_valid) %>% bind_rows(dt_traits, .) %>% arrange(Species) %>% summary
-dt_traits <- traits_full %>% rename(Family = family_valid) %>% bind_rows(dt_traits, .) %>% arrange(Species)
-
-dt_traits %>% group_by(Species) %>% mutate(n = n()) %>% filter(n > 1) %>% View
-# duplicates because worms and fishbase don't agree on some families
-dt_traits <- dt_traits %>% select(!Family) %>% distinct
-dt_traits <- dt_traits[-which(dt_traits$Species == 'Cantherhines dumerilii' & dt_traits$Diet == 'InvSes'),]
+# categorical traits match test
+colnames(traits_full)[3] <- 'Diet'
+dt_traits_sp <- sandbox_traits %>% filter(!str_detect(fishbase_valid, '\\ssp$|idae$')) %>% 
+  select(fishbase_valid, Diet, Position) %>% # just categorical
+  bind_rows(., traits_full[-1]) %>% # join with manual compiled traits
+  left_join(dt_traits_sp, ., by = 'fishbase_valid')
 
 ## GENUS LEVEL TRAITS =================================================
 
-allsp <- dt_assemblage %>% distinct(worms_valid, fishbase_valid, taxon_resolution)
-# allsp %>% filter(is.na(fishbase_valid)) %>% View
-
-# dt_assemblage %>% filter(taxon_resolution == 'species', is.na(fishbase_valid)) %>%
-#   distinct(worms_valid, fishbase_valid) %>% View
-
-dt_assemblage <- mutate(dt_assemblage, 
-                        fishbase_valid = case_when(worms_valid == 'Haemulon atlanticus' ~ 'Haemulon atlanticus',
-                                                   worms_valid == 'Pomacentrus maafu' ~ 'Pomacentrus moluccensis',
-                                                   worms_valid == 'Holacanthus townsendi' ~ 'Holacanthus bermudensis',
-                                                   worms_valid == 'Hypoplectrus hybrid' ~ 'Hypoplectrus sp',
-                                                   worms_valid == 'Malacoctenus aff.' ~ 'Malacoctenus sp',
-                                                   worms_valid == 'Menaphorus punticulatus' ~ NA,
-                                                   is.na(fishbase_valid) ~ worms_valid,
-                                                   .default = fishbase_valid))
-dt_rareass <- mutate(dt_rareass, 
-                        fishbase_valid = case_when(worms_valid == 'Haemulon atlanticus' ~ 'Haemulon atlanticus',
-                                                   worms_valid == 'Pomacentrus maafu' ~ 'Pomacentrus moluccensis',
-                                                   worms_valid == 'Holacanthus townsendi' ~ 'Holacanthus bermudensis',
-                                                   worms_valid == 'Hypoplectrus hybrid' ~ 'Hypoplectrus sp',
-                                                   worms_valid == 'Malacoctenus aff.' ~ 'Malacoctenus sp',
-                                                   worms_valid == 'Menaphorus punticulatus' ~ NA,
-                                                   is.na(fishbase_valid) ~ worms_valid,
-                                                   .default = fishbase_valid))
-
-dt_single <- mutate(dt_single, 
-                        fishbase_valid = case_when(worms_valid == 'Haemulon atlanticus' ~ 'Haemulon atlanticus',
-                                                   worms_valid == 'Pomacentrus maafu' ~ 'Pomacentrus moluccensis',
-                                                   worms_valid == 'Holacanthus townsendi' ~ 'Holacanthus bermudensis',
-                                                   worms_valid == 'Hypoplectrus hybrid' ~ 'Hypoplectrus sp',
-                                                   worms_valid == 'Malacoctenus aff.' ~ 'Malacoctenus sp',
-                                                   worms_valid == 'Menaphorus punticulatus' ~ NA,
-                                                   is.na(fishbase_valid) ~ worms_valid,
-                                                   .default = fishbase_valid))
-allsp <- dt_assemblage %>% distinct(worms_valid, fishbase_valid, taxon_resolution)
-anti_join(allsp, dt_traits, by = c('fishbase_valid' = 'Species')) %>% View
-
-rm(traits_missing)
-# still some species missing?!
-
-missing <- read_csv('src/traits_missing.csv')
-dt_traits <- missing %>% select(!worms_valid) %>% rename(Species = fishbase_valid) %>% 
-  bind_rows(dt_traits, .)
-rm(missing)
+sandbox_traits %>% filter(str_detect(Species, '\\ssp$')) %>% View
+genus_query <- dt_traits_g %>% filter(fishbase_valid %in% sandbox_traits$Species == F) %>% 
+  pull(fishbase_valid) %>% word(., 1)
 
 # update species gap
-genus <- allsp[allsp %in% dt_traits$Species == F] |> word(1)
 # take the genus mean for these traits?
-traits_genus <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
-  filter(Genus %in% genus) %>% select(Genus, MaxSizeTL, a, b) %>%
-  group_by(Genus) %>% 
-  summarise(MaxSizeTL = mean(MaxSizeTL), a = mean(a), b = mean(b))
+# fishbase needs the species table as an intermediate to query
+fb_sp <- species_names(fields = c('SpecCode', 'Species', 'Genus')) %>% filter(Genus %in% genus_query)
+Lab_g <- estimate(fb_sp$Species, fields = c('Species', 'MaxLengthTL', 'a', 'b'))
+# calculate genus means
+Lab_g <- Lab_g %>% mutate(Genus = word(Species, 1)) %>% group_by(Genus) %>% 
+  summarise(MaxSizeTL = mean(MaxLengthTL, na.rm = T), 
+            a = mean(a, na.rm = T), 
+            b = mean(b, na.rm = T)) %>% ungroup
+Lab_g %>% filter(is.na(a)) # anthias again
+Lab_g$a[is.na(Lab_g$a)] <- 0.02515
+Lab_g$b[is.na(Lab_g$b)] <- 2.96048375
+Lab_g$fishbase_valid <- paste(Lab_g$Genus, 'sp')
+Lab_g$Genus <- NULL
+rm(fb_sp)
+
+# merge in length traits
+dt_traits_g <- sandbox_traits %>% filter(str_detect(Species, '\\ssp$')) %>%
+  select(Species, MaxSizeTL, a, b) %>% rename(fishbase_valid = Species) %>% 
+  bind_rows(., Lab_g) %>%
+  left_join(dt_traits_g, ., by = 'fishbase_valid')
 
 # frequency based matching for categorical
-diet <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
-  filter(Genus %in% genus) %>% ungroup %>% select(Genus, Diet) %>%
+diet <- dt_traits_sp %>% mutate(Genus = word(fishbase_valid, 1)) %>% 
+  filter(Genus %in% genus_query) %>% ungroup %>% 
+  select(Genus, Diet) %>%
   group_by_all %>% summarise(freq = n()) %>% arrange(Genus, desc(freq)) %>%
   mutate(order = 1:n())
 
-position <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
-  filter(Genus %in% genus) %>% ungroup %>% select(Genus, Position) %>%
-  group_by_all %>% summarise(freq = n()) %>% arrange(Genus, desc(freq)) %>%
+position <- dt_traits_sp %>% mutate(Genus = word(fishbase_valid, 1)) %>% 
+  filter(Genus %in% genus_query) %>% ungroup %>%
+  select(Genus, Position) %>%
+  group_by_all %>% summarise(freq = n()) %>% 
+  arrange(Genus, desc(freq)) %>%
   mutate(order = 1:n())
 
 diet <- diet %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
 position <- position %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
-traits_genus <- left_join(traits_genus, diet, by = 'Genus') %>%
-  left_join(., position, by = "Genus") %>%
-  mutate(Species = paste0(Genus, ' sp'))
-rm(diet, position, genus)
 
-dt_traits <- dt_traits %>% mutate(Genus = word(Species, 1)) %>% 
-  bind_rows(., traits_genus) %>% arrange(Species)
-View(dt_traits)
+temp <- left_join(diet, position, by = "Genus")
+temp$fishbase_valid <- with(temp, paste(Genus, 'sp', sep = ' '))
+temp <- sandbox_traits %>% filter(str_detect(Species, '\\ssp$')) %>%
+  select(Species, Diet, Position) %>% rename(fishbase_valid = Species) %>% 
+  bind_rows(temp, .)
 
-allsp[-which(allsp %in% dt_traits$Species)] # manual uncertain compiles
-# allsp[-which(allsp %in% dt_traits$Species)]  %>% clipr::write_clip(.)
-rm(traits_genus)
-dt_traits <- read_csv('./src/missing_traits_genus.csv') %>% bind_rows(dt_traits, .)
-rm(fishbase_traits)
+dt_traits_g <- left_join(dt_traits_g, temp[-1], by = 'fishbase_valid')
+dt_traits_g %>% filter(is.na(Diet)) %>% View
+dt_traits_g <- dt_traits_g %>% filter(!is.na(Diet)) # isolate to manually fill in
+
+dt_traits_g <- read_csv('src/missing_g.csv') %>% bind_rows(., dt_traits_g)
 
 ## FAMILY LEVEL TRAITS =================================================
 
-family <- sort(unique(dt_assemblage$genus_sp)) %>% str_remove(., '\\d') %>% 
-  unique
-family <- family[-which(family %in% dt_traits$Species)] %>% word(., 1) %>% unique
+# fishbase still uses Scaridae
+dt_sp$fishbase_valid[with(dt_sp, which(genus_valid == 'Scarini' & str_detect(taxon_resolution, 'family')))] <- 'Scaridae'
 
-traits_family <- dt_assemblage %>% distinct(Family, Genus) %>% 
-  left_join(dt_traits, ., by = "Genus") %>% 
-  filter(Family %in% family) %>% select(Family, MaxSizeTL, a, b) %>%
-  group_by(Family) %>% 
-  summarise(MaxSizeTL = mean(MaxSizeTL), a = mean(a), b = mean(b))
+fb_sp <- species_names(fields = c('SpecCode', 'Species', 'Family')) %>% filter(Family %in% dt_traits_f$fishbase_valid)
+Lab_f <- estimate(fb_sp$Species, fields = c('Species', 'MaxLengthTL', 'a', 'b'))
+Lab_f <- left_join(Lab_f, fb_sp[c(2,5)], by = 'Species') %>% group_by(Family) %>% 
+  summarise(MaxSizeTL = mean(MaxLengthTL, na.rm = T), 
+            a = mean(a, na.rm = T), 
+            b = mean(b, na.rm = T)) %>% ungroup
+
+# any missing?
+dt_traits_f %>% filter(fishbase_valid %in% Lab_f$Family == F) # good
+colnames(Lab_f)[1] <- 'fishbase_valid'
 
 # frequency based matching for categorical
-diet <- dt_assemblage %>% distinct(Family, Genus) %>% 
-  left_join(dt_traits, ., by = "Genus") %>% 
-  filter(Family %in% family) %>% ungroup %>% select(Family, Diet) %>%
-  group_by_all %>% summarise(freq = n()) %>% arrange(Family, desc(freq)) %>%
+diet <- dt_sp %>% distinct(family_valid, fishbase_valid) %>% 
+  left_join(dt_traits_sp, ., by = "fishbase_valid") %>% 
+  filter(family_valid %in% dt_traits_f$fishbase_valid) %>% ungroup %>% 
+  select(family_valid, Diet) %>%
+  group_by_all %>% summarise(freq = n()) %>% arrange(family_valid, desc(freq)) %>%
   mutate(order = 1:n())
 
-position <- dt_assemblage %>% distinct(Family, Genus) %>% 
-  left_join(dt_traits, ., by = "Genus") %>% 
-  filter(Family %in% family) %>% ungroup %>% select(Family, Position) %>%
-  group_by_all %>% summarise(freq = n()) %>% arrange(Family, desc(freq)) %>%
+position <- dt_sp %>% distinct(family_valid, fishbase_valid) %>% 
+  left_join(dt_traits_sp, ., by = "fishbase_valid") %>% 
+  filter(family_valid %in% dt_traits_f$fishbase_valid) %>% ungroup %>% 
+  select(family_valid, Position) %>%
+  group_by_all %>% summarise(freq = n()) %>% arrange(family_valid, desc(freq)) %>%
   mutate(order = 1:n())
 
 diet <- diet %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
 position <- position %>% filter(order == 1) %>% ungroup %>% select(!c(freq, order))
 
-traits_family <- left_join(traits_family, diet, by = 'Family') %>%
-  left_join(., position, by = "Family")
+dt_traits_f %>% filter(fishbase_valid %in% diet$family_valid == F) # ok manual 2
 
-traits_family$Species <- traits_family$Family
+diet <- left_join(diet, position, by = 'family_valid')
+diet <- tibble(family_valid = c('Scaridae', 'Clupeidae'),
+               Diet = c('Herb', 'Plank'),
+               Position = c('BtPlDw', 'PelgAs')) %>% bind_rows(diet, .)
 
-dt_traits <- dt_assemblage %>% distinct(Family, Genus) %>% 
-  left_join(dt_traits, ., by = "Genus") %>% bind_rows(., traits_family)
+# merge in
+dt_traits_f <- diet %>% rename(fishbase_valid = family_valid) %>% 
+  left_join(dt_traits_f, ., by = 'fishbase_valid') %>% 
+  left_join(., Lab_f, by = 'fishbase_valid')
 
-rm(traits_family, family, diet, position)
+rm(diet, position, Lab_f, Lab_g, fb_sp, dt_troph, sandbox_traits, temp)
+
+
+# FINAL JOIN! ======================================================================================
+
+summary(dt_traits_sp)
+summary(dt_traits_g)
+summary(dt_traits_f)
+
+dt_traits <- bind_rows(dt_traits_sp, dt_traits_g, dt_traits_f)
+
+# some final checks
+dt_sp %>% filter(fishbase_valid %in% dt_traits$fishbase_valid == F) %>% View # not included?
+n_distinct(dt_traits$fishbase_valid) # duplicates?
+dt_traits <- distinct(dt_traits)
+dt_traits %>% group_by(fishbase_valid) %>% mutate(n = n()) %>% filter(n > 1) %>% View
+# conflicting sources?
+dt_traits <- dt_traits %>% distinct(fishbase_valid, .keep_all = T)
 
 # readr::write_csv(dt_traits, './src/traits_final.csv')
