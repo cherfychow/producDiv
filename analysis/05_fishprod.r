@@ -2,10 +2,9 @@
 # ProducDiv
 # Calculate productivity from fish traits + SST with observed lengths
 
-require(dplyr)
+require(tidytable)
 require(stringr)
 require(rfishprod)
-require(beepr)
 
 # PREP =========================================================================
 
@@ -14,19 +13,29 @@ require(beepr)
 
 # need to keep some sampling info since SST are specific to location + time
 # dt_assemblage, because it's full data
+dt_assemblage <- bind_rows(dt_rareass, dt_single)
+dt_assemblage <- dt_sp %>% select(taxaID, ends_with('valid'), taxon_resolution) %>% 
+  left_join(dt_assemblage, ., by = "taxaID") # join in
+summary(dt_assemblage)
+
 # traits
+# use taxaID as link
+dt_traits <- dt_sp %>% select(taxaID, fishbase_valid) %>% left_join(., dt_traits, by = 'fishbase_valid')
+
+# just IDs, time, trait taxa name, length
 prodtrait <- dt_assemblage %>% 
-  distinct(DataID, gridcell, SamplingEventID, Year, Month, genus_sp, Length) %>%
-  # all family level = just family
-  mutate(genus_sp = case_when(str_detect(genus_sp, '(?<=idae)\\ssp\\d*$') ~ str_remove(genus_sp, '\\ssp\\d*$'),
-                              .default = str_remove(genus_sp, '\\d+'))) %>%
-  # known uncertains irrelevant for productivity
-  left_join(., dt_traits, by = c('genus_sp' = 'Species')) # traits
+  distinct(ID, DataID, seriesID, taxaID, gridcell, SamplingEventID, Year, Month, date_res, Length) %>%
+  inner_join(dt_traits, ., by = c('taxaID'))
+# automatically filters out the uncertains that don't qualify for trait matching
+# inner join somehow didn't quite work
+prodtrait <- prodtrait %>% filter(!is.na(Length))
+prodtrait <- prodtrait %>% filter(!is.na(Diet))
 
 # SST
-prodtrait <- left_join(prodtrait, dt_sst[-c(1,5,6)], 
-                       by = c('gridcell', 'Year', 'Month')) %>% # SST
-  rename(sstmean = sst, Size = Length, Species = genus_sp)
+prodtrait <- left_join(prodtrait, dt_sst, by = c('gridcell', 'Year', 'Month', 'date_res')) %>% # SST
+  select(!c(gridcell, date_res, Year, Month)) %>% # no longer need these space time links
+  rename(sstmean = sst, Size = Length, Species = fishbase_valid) # name matching
+prodtrait <- prodtrait %>% relocate(ends_with('ID'), .after = sstmean)
 
 # our own version of tidytrait
 sort(unique(prodtrait$Diet)) == sort(unique(dt_prodDB$Diet))
@@ -34,7 +43,7 @@ sort(unique(prodtrait$Position)) == sort(unique(dt_prodDB$Position))
 # have to fit the db's factor ordering
 prodtrait <- prodtrait %>% 
   mutate(Method = 'Otolith',
-         Diet = factor(Diet, levels = sort(unique(prodtrait$Diet))),
+         Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
          Position = factor(Position, levels = levels(dt_prodDB$Position)))
 summary(prodtrait)
 prodtrait <- prodtrait %>% filter(!is.na(b)) # only 2 very uncertain records

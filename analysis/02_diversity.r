@@ -1,12 +1,11 @@
 
 
 # ProducDiv
-# Calculate asymptotic diversity
+# Calculate asymptotic diversity and final prep of diversity predictors
 
 require(iNEXT)
-require(dplyr)
+require(tidytable)
 require(ggplot2)
-require(beepr)
 
 # requires 01_gridding for the data source
 
@@ -14,9 +13,8 @@ require(beepr)
 # use dt_div to index since it's already structured by rareID + samplingevents
 # time intensive loop
 
-# for studies where there is no location, make seriesID the same as rareID
-dt_rareass$seriesID[is.na(dt_rareass$seriesID)] <- dt_rareass$rareID[is.na(dt_rareass$seriesID)]
-timeseries <- dt_rareass %>% distinct(DataID, rareID, seriesID)
+timeseries <- dt_rareass %>% distinct(DataID, seriesID)
+
 
 # for all the sampling events in each rareID
 # we use timeseries to index by seriesID, so 
@@ -27,10 +25,12 @@ for (R in 1:nrow(timeseries)) {
 
   abund <- dt_rareass %>%
     filter(seriesID == timeseries$seriesID[R]) %>%
-    select(Year, SamplingEventID, Abundance, worms_valid) %>% ungroup %>% 
+    left_join(., dt_meta[c(1,7)], by = 'DataID') %>% 
+    mutate(Grain = str_extract(`Grain size`, '\\d{2,}') %>% as.numeric) %>% 
+    select(Year, SamplingEventID, Abundance, taxaID, Grain) %>% ungroup %>% 
     group_by_at(vars(-Abundance)) %>%
     # collapse length
-    summarise(Abundance = sum(Abundance)) %>% ungroup
+    summarise(Abundance = sum(Abundance*Grain) %>% round(., 0)) %>% ungroup # density back to counts
   
   # wide format
   # drop year. we can match that back from eventID
@@ -79,55 +79,22 @@ for (R in 1:nrow(timeseries)) {
       bind_rows(S_asy, .)
   }
   print(paste0("Iteration ", R, ' of ', nrow(timeseries), ' done'))
-  
-  save(S_asy, file = 'asydiv.RData')
+
 }
 
-beep()
 
-
-rm(abund, temp, na, rare_id, R)
+rm(abund, temp, na, rare_id, R, errorhandle)
 str(S_asy)
 summary(S_asy)
+
+# isolate, rerun fix
+fix <- S_asy %>% filter(is.na(value)) %>% select(seriesID)
+S_asy_clean <- S_asy %>% filter(!seriesID %in% fix$seriesID) # remove from main
+# it was because of decimal points and 0.5s. round densities
+# fix data won't converge. omit
+rm(fix)
+
 # join up with observed species richness
-S_asy <- S_asy %>% rename(S_asy = value, asy_lwr = lwr, asy_upr = upr) %>% select(!metric) %>% 
-  left_join(., timeseries[-1], by = "seriesID")
-S_asy <- dt_rareass %>% distinct(rareID, seriesID, SamplingEventID, Year) %>% 
-  left_join(., S_asy, by = c('rareID', 'seriesID', 'SamplingEventID'))
-summary(S_asy)
+dt_div <- S_asy_clean %>% rename(S_asy = value, asy_lwr = lwr, asy_upr = upr) %>% select(!metric) %>%
+  left_join(dt_div,., by = c('seriesID', 'SamplingEventID'))
 
-# some sampling events with NAs in asymptotic richness? try again
-missing <- S_asy %>% filter(is.na(S_asy)) %>% distinct(SamplingEventID) %>% pull
-
-missing <- dt_rareass %>%
-  filter(SamplingEventID %in% missing) %>%
-  select(SamplingEventID, Abundance, worms_valid) %>% ungroup %>% 
-  group_by_at(vars(-Abundance)) %>%
-  # collapse length
-  summarise(Abundance = sum(Abundance)) %>% ungroup
-
-# wide format
-# drop year. we can match that back from eventID
-missing <- missing %>% 
-  tidyr::pivot_wider(names_from = SamplingEventID, values_from = Abundance)
-na <- as.list(rep(0, ncol(missing)-1))
-names(na) <- colnames(missing)[-1]
-missing <- tidyr::replace_na(missing, na)
-missing_asy <- iNEXT(x = as.data.frame(missing[-1]), q = 0, datatype = 'incidence_freq', se = T)
-
-
-View(S_asy, )
-rm(S_asy)
-
-# visualise
-source('https://gist.githubusercontent.com/cherfychow/e9ae890fd16f4c86730748c067feee2b/raw/b2db138ab8164c237129308ea643de78cd54b252/cherulean.R')
-
-f_div <- ggplot(data = dt_div) +
-    geom_errorbar(aes(x = Year, ymax = upr, ymin = lwr, color = rareID)) +
-    geom_point(aes(x = Year, y = value, color = rareID)) +
-    guides(fill = 'none', color = 'none') +
-    facet_wrap(vars(metric), scales = 'free') +
-    scale_color_cherulean(palette = 'cheridis', discrete = T) +
-    scale_fill_cherulean(palette = 'cheridis', discrete = T)
-
-plotly::ggplotly(f_div)

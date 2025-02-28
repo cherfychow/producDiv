@@ -147,7 +147,7 @@ traits_full$fishbase_valid[is.na(traits_full$fishbase_valid)] <- traits_full$Spe
 traits_full[is.na(traits_full$fishbase_valid),] # any left? great!
 rm(temp)
 
-traits_full %>% select(!Species) %>% distinct %>% nrow
+traits_full %>% select(!Species) %>% distinct %>% nrow  
 traits_full %>% filter(fishbase_valid %in% dt_traits_sp$fishbase_valid) %>% nrow
 dt_traits_sp$fishbase_valid[which(dt_traits_sp$fishbase_valid %in% traits_full$fishbase_valid == F & dt_traits_sp$fishbase_valid %in% sandbox_traits$Species == F)]
 

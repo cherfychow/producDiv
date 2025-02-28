@@ -18,12 +18,18 @@ require(beepr)
 G = 0.04 # grid cell size in sq km 
 
 # load in data
-dt_assemblage <- read_csv('./src/macro_reef_fish_clean.csv')
+dt_assemblage <- read_csv('./src/macro_reef_fish_cleanfixed.csv')
 dt_meta <- read_csv('./src/macro_reef_fish_meta.csv')
 dt_sp <- read_csv('./src/dt_species_clean.csv')
 
 dt_assemblage$DataID <- str_to_lower(dt_assemblage$DataID)
 dt_meta$DataID <- str_to_lower(dt_meta$DataID)
+
+# reapply species table to raw data
+dt_assemblage <- dt_assemblage %>% select(!taxon_resolution:fishbase_valid) %>% 
+  left_join(., dt_sp[c(1,5,7:10)], by = 'taxaID')
+
+dt_single %>% distinct(DataID, Year) %>% filter(is.na(Year)) %>% View
 
 # GRID DATA ========================================================================================
 # not all datasets use permanent locations
@@ -88,7 +94,7 @@ dt_time <- mutate(dt_time,
                                           DataID == '054_rls' ~ str_extract(SamplingEventID, '^[A-Z0-9]+(?=\\_)'),
                                           DataID == '122_sifkoester_aldabra' ~ str_extract(SamplingEventID, '^[A-Z0-9]+(?=\\_)'),
                                           str_detect(DataID, 'serf') ~ str_extract(SamplingEventID, '(?<=\\_)\\d{3,4}(?=\\_)'),
-                                          str_detect(DataID, 'richardson') ~ str_extract(SamplingEventID, '(?<=\\_)[A-Z0-9]{3,}(?=\\_)'),
+                                          str_detect(DataID, 'richardson') ~ str_extract(SamplingEventID, '(?<=\\_)[A-Z0-9a-z]{3,}(?=\\_)'),
                                           str_detect(SamplingEventID, '^anequim') ~ str_extract(SamplingEventID, '(?<=\\d{4}\\_)[a-z]+'),
                                           str_detect(DataID, 'aqaba') ~ str_extract(SamplingEventID, '^[A-Za-z\\_](?=\\_\\d)'),
                                           DataID == 'bt45_moorea_lter' ~ str_extract(SamplingEventID, '^\\d\\_[A-Z]+')
@@ -114,7 +120,9 @@ dt_time %>% filter(is.na(Location) == F) %>% group_by(rareID) %>%
 set.seed(24)
 
 # rarefy each gridcell for each study by lowest number of sampling events
+# more efficient to only run the loop for rareIDs that need it
 
+# which ones do need it
 test <- dt_time %>% group_by(rareID, Location, Year) %>% 
   # number of events per year
   summarise(eventN = n_distinct(SamplingEventID)) %>% ungroup %>% 
@@ -122,33 +130,55 @@ test <- dt_time %>% group_by(rareID, Location, Year) %>%
   # summary stats
   summarise(max_event = max(eventN), 
             event_equal = n_distinct(eventN)) # consistent through time?
-test[test$event_equal == 1,] %>% nrow
-test <- test %>% filter(event_equal != 1) # use this as the index key
+
+test[test$event_equal == 1,] %>% nrow # ones that don't
+test <- test %>% filter(event_equal != 1) # use this as the index key for loops
 test$rare_loc <- with(test, paste(rareID, Location, sep = '_'))
 
-# more efficient to only run the loop for rareIDs that need it
+
 # populate with ones that don't need any rarefying
 dt_rareass <- dt_time %>% mutate(rare_loc = paste(rareID, Location, sep = '_')) %>% 
   filter(rare_loc %in% test$rare_loc == F)
 
 for (i in 1:nrow(test)) { # per rareID
   
-  # get the lowest common denominator across years rN
-  rN <- dt_time %>% filter(rareID == test$rareID[i], Location == test$Location[i]) %>%
-    group_by(Year) %>% 
-    summarise(eventN = n_distinct(SamplingEventID)) %>%
-    pull(eventN) %>% min() 
-  
-  # randomly select the sampling events
-  events <- dt_time %>% filter(rareID == test$rareID[i], Location == test$Location[i]) %>%
-    distinct(rareID, SamplingEventID, Year) %>%
-    group_by(rareID, Year) %>% sample_n(rN, replace = FALSE) %>% # just one random sample
-    pull(SamplingEventID)
-  
-  # subset
-  dt_rareass <- dt_time %>% 
-    filter(rareID == test$rareID[i], SamplingEventID %in% events, Location == test$Location[i]) %>%
-    bind_rows(dt_rareass, .)
+  if (is.na(test$Location[i])) {
+    # get the lowest common denominator across years rN
+    rN <- dt_time %>% filter(rareID == test$rareID[i]) %>%
+      group_by(Year) %>% 
+      summarise(eventN = n_distinct(SamplingEventID)) %>%
+      pull(eventN) %>% min()
+    
+    # randomly select the sampling events
+    events <- dt_time %>% filter(rareID == test$rareID[i]) %>%
+      distinct(rareID, SamplingEventID, Year) %>%
+      group_by(rareID, Year) %>% sample_n(rN, replace = FALSE) %>% # just one random sample
+      pull(SamplingEventID)
+    
+    # subset
+    dt_rareass <- dt_time %>% 
+      filter(rareID == test$rareID[i], SamplingEventID %in% events) %>%
+      bind_rows(dt_rareass, .)
+    
+  } else {
+    # get the lowest common denominator across years rN
+    rN <- dt_time %>% filter(rareID == test$rareID[i], Location == test$Location[i]) %>%
+      group_by(Year) %>% 
+      summarise(eventN = n_distinct(SamplingEventID)) %>%
+      pull(eventN) %>% min()
+    
+    # randomly select the sampling events
+    events <- dt_time %>% filter(rareID == test$rareID[i], Location == test$Location[i]) %>%
+      distinct(rareID, SamplingEventID, Year) %>%
+      group_by(rareID, Year) %>% sample_n(rN, replace = FALSE) %>% # just one random sample
+      pull(SamplingEventID)
+    
+    # subset
+    dt_rareass <- dt_time %>% 
+      filter(rareID == test$rareID[i], SamplingEventID %in% events, Location == test$Location[i]) %>%
+      bind_rows(dt_rareass, .)
+    
+  }
   
   # loop console logistics
   if (exists('complete') == F) { # progress object
@@ -157,7 +187,7 @@ for (i in 1:nrow(test)) { # per rareID
   
   print(paste0("Iteration ", complete, " complete"))
   
-  if (D == nrow(test)) {print("Loop complete")}
+  if (i == nrow(test)) {print("Loop complete")}
 }
 
 rm(complete)
@@ -179,38 +209,67 @@ dt_div <- dt_rareass %>% group_by(rareID, Location, SamplingEventID) %>%
 for (i in 1:nrow(test)) { 
   
   # for all the rareIDs and locations that don't have equal sampling events
-  dataid <- timeseries$rareID[D]
-  L = dt_time %>% filter(rareID == dataid) %>% pull(Location) %>% unique
+  dataid <- test$rareID[i]
   
-  # lowest common denominator
-  rN <- dt_time %>% filter(rareID == dataid, Location == loc) %>% 
-    group_by(Year) %>% 
-    summarise(eventN = n_distinct(SamplingEventID)) %>% pull(eventN) %>% min()
-  
-  for (i in 2:iter) { # rinse and repeat
-    # randomly select the sampling events
-    events <- dt_time %>% filter(rareID == dataid, Location == loc) %>%
-      distinct(SamplingEventID, Year) %>%
-      group_by(Year) %>% sample_n(rN, replace = FALSE) %>%
-      pull(SamplingEventID)
+  if (is.na(test$Location[i])) {
+    # lowest common denominator
+    rN <- dt_time %>% filter(rareID == dataid) %>% 
+      group_by(Year) %>% 
+      summarise(eventN = n_distinct(SamplingEventID)) %>% pull(eventN) %>% min()
     
-    dt_div <- dt_time %>% 
-      filter(rareID == dataid, Location == loc, SamplingEventID %in% events) %>%
-      group_by(rareID, Location, SamplingEventID) %>% 
-      summarise(S = n_distinct(worms_valid), iter = i) %>% ungroup %>%
-      bind_rows(dt_div, .) # name the iteration
+    for (i in 2:iter) { # rinse and repeat
+      # randomly select the sampling events
+      events <- dt_time %>% filter(rareID == dataid) %>%
+        distinct(SamplingEventID, Year) %>%
+        group_by(Year) %>% sample_n(rN, replace = FALSE) %>%
+        pull(SamplingEventID)
+      
+      dt_div <- dt_time %>% 
+        filter(rareID == dataid, SamplingEventID %in% events) %>%
+        group_by(rareID, Location, SamplingEventID) %>% 
+        summarise(S = n_distinct(worms_valid), iter = i) %>% ungroup %>%
+        bind_rows(dt_div, .) # name the iteration
+      
+      # loop console logistics
+      if (exists('complete') == F) {
+        complete = 1
+      } else complete = complete + 1
+      
+    }
+  } else {
+    loc <- test$Location[i]
     
-    # loop console logistics
-    if (exists('complete') == F) {
-      complete = 1
-    } else complete = complete + 1
+    # lowest common denominator
+    rN <- dt_time %>% filter(rareID == dataid, Location == loc) %>% 
+      group_by(Year) %>% 
+      summarise(eventN = n_distinct(SamplingEventID)) %>% pull(eventN) %>% min()
     
+    for (i in 2:iter) { # rinse and repeat
+      # randomly select the sampling events
+      events <- dt_time %>% filter(rareID == dataid, Location == loc) %>%
+        distinct(SamplingEventID, Year) %>%
+        group_by(Year) %>% sample_n(rN, replace = FALSE) %>%
+        pull(SamplingEventID)
+      
+      dt_div <- dt_time %>% 
+        filter(rareID == dataid, Location == loc, SamplingEventID %in% events) %>%
+        group_by(rareID, Location, SamplingEventID) %>% 
+        summarise(S = n_distinct(worms_valid), iter = i) %>% ungroup %>%
+        bind_rows(dt_div, .) # name the iteration
+      
+      # loop console logistics
+      if (exists('complete') == F) {
+        complete = 1
+      } else complete = complete + 1
+      
+    }
   }
   
   # loop console logistics
   print(paste0("Iteration ", complete, " complete"))
   print(summary(dt_div))
-  if (D == n_distinct(dt_time$rareID)) {print('Loop complete')}
+  if (i == n_distinct(dt_time$rareID)) {print('Loop complete')}
+  save(dt_div, file = 'S.RData')
   
 }
 
@@ -224,7 +283,9 @@ dt_div <- dt_div %>% group_by(rareID, Location, SamplingEventID) %>%
 
 summary(dt_rareass)
 summary(dt_div)
-dt_div %>% filter(S == 1) %>% View
+temp <- dt_div %>% filter(S == 1) %>% pull(SamplingEventID)
+dt_rareass %>% filter(SamplingEventID %in% temp) %>% distinct(SamplingEventID, worms_valid) %>% View
+rm(temp)
 
 ggplot(data = dt_div) +
   geom_histogram(aes(x = S)) + theme_classic()
@@ -233,6 +294,8 @@ ggplot(data = dt_div) +
 # check the rarefied, gridded time series
 sum(is.na(dt_rareass$gridcell))
 sum(str_detect(dt_rareass$rareID, 'NA$'))
+dt_rareass$rare_loc <- NULL
+# make a field that incorporates location with rarefy ID
 dt_rareass <- mutate(dt_rareass, 
                      seriesID = case_when(.default = rareID,
                                           is.na(Location) == F ~ paste(rareID, Location, sep = '_')))
@@ -244,12 +307,14 @@ dt_div <- mutate(dt_div,
 # time series durations
 dt_rareass %>% group_by(seriesID) %>%
     summarise(yearN = max(Year) - min(Year) + 1) %>% View
+single <- dt_rareass %>% group_by(seriesID) %>%
+  summarise(yearN = max(Year) - min(Year) + 1) %>% filter(yearN < 2) %>% pull(seriesID)
 
 # migrate and remove from time series data
-dt_single <- dt_rareass %>% filter(seriesID %in% single_series) %>% select(!c(rareID, seriesID, Location)) %>% 
+dt_single <- dt_rareass %>% filter(seriesID %in% single) %>% select(!c(rareID, seriesID, Location)) %>% 
   bind_rows(dt_single, .)
-dt_rareass <- dt_rareass %>% filter(!seriesID %in% single_series)
-dt_div <- dt_div %>% filter(!seriesID %in% single_series)
+dt_rareass <- dt_rareass %>% filter(!seriesID %in% single)
+dt_div <- dt_div %>% filter(!seriesID %in% single)
 summary(dt_rareass)
 dt_rareass %>% group_by(seriesID) %>%
   summarise(yearN = max(Year) - min(Year) + 1) %>% summary
@@ -270,6 +335,7 @@ dt_single <- dt_time %>%
   filter(rareID %in% c('036_noaa_sefsc_5916040223', '036_noaa_sefsc_5925251511')) %>% 
   select(!c(Location, rareID)) %>% bind_rows(dt_single, .)
 
+rm(single)
 
 # CALCULATE RICHNESS FOR SINGLE YEAR STUDIES =======================================================
 
@@ -280,3 +346,8 @@ summary(dt_div_single)
 
 ggplot(data = dt_div_single) +
   geom_histogram(aes(x = S)) + theme_classic()
+
+# I don't think time series or single time points will be analysed together, so delete raw data
+rm(dt_assemblage)
+
+
