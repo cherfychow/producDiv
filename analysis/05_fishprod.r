@@ -42,41 +42,54 @@ sort(unique(prodtrait$Diet)) == sort(unique(dt_prodDB$Diet))
 sort(unique(prodtrait$Position)) == sort(unique(dt_prodDB$Position))
 # have to fit the db's factor ordering
 prodtrait <- prodtrait %>% 
-  mutate(Method = 'Otolith',
+  mutate(Method = factor('Otolth', levels = sort(unique(dt_prodDB$Method))),
          Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
          Position = factor(Position, levels = levels(dt_prodDB$Position)))
+dt_prodDB <- dt_prodDB %>% 
+  mutate(Method = factor(Method, levels = sort(unique(dt_prodDB$Method))),
+         Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
+         Position = factor(Position, levels = levels(dt_prodDB$Position)))
+summary(dt_prodDB)
 summary(prodtrait)
-prodtrait <- prodtrait %>% filter(!is.na(b)) # only 2 very uncertain records
 # make db match
-dt_prodDB$Diet <- factor(dt_prodDB$Diet, levels = sort(unique(prodtrait$Diet)))
-
 
 # check if any fish are larger than their max size
-prodtrait %>% filter(Size >= MaxSizeTL) %>% nrow
+prodtrait %>% filter(Size > MaxSizeTL) %>% nrow
+prodtrait %>% filter(Size > MaxSizeTL) %>% View
+# 109k rows
 
 # limit observed size to be below max size
 prodtrait <- mutate(prodtrait, 
                     Size = case_when(Size > MaxSizeTL ~ MaxSizeTL - 0.1, 
                                      .default = Size))
 
-# Formula from Morais and Bellwood (2018) #
-growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
+# Formula from Morais and Bellwood (2018)
+growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position + Method)
 
 # Kmax, growth coef ============================================================
 
 # Kmax estimate per species-gridcell-year-dataID / species-samplingeventid-dataID
 # recommended boostrapts on 100s to 1000s scale
 set.seed(24)
-vbgf_par <- prodtrait %>% distinct %>% 
-  predKmax(., dataset = dt_prodDB,
-           fmod = growthf, niter = 100, return = 'pred')
+prod_par <- rfishprod:::xgboostparams # make sure the parameters are loaded
+dt_prodDB <- dt_prodDB %>% select(!starts_with('trophic'))
+vbgf_par <- predKmax(traits = prodtrait, dataset = dt_prodDB, params = prod_par,
+           fmod = growthf, niter = 1000, return = 'pred')
 
-vbgf_par <- vbgf_par$pred # just keep predictions
+summary(vbgf_par$pred)
 rm(prodtrait, growthf)
 
-summary(vbgf_par)
+summary(vbgf_par$pred)
+
 # negative Kmax values
-vbgf_par %>% filter(Kmax <= 0) %>% nrow() # work on this later... see if 1000 runs solves it
+# vbgf_par$pred %>% filter(Kmax <= 0) %>% View
+
+# try rerun
+negK <- vbgf_par$pred %>% filter(Kmax <= 0) %>% select(!starts_with('Kmax'))
+vbgf_par$pred <- vbgf_par$pred %>% filter(Kmax > 0)
+sort(unique(negK$Species))
+negK <- predKmax(negK, dataset = dt_prodDB, params = mod_params,
+                 fmod = growthf, niter = 1000, return = 'pred')
 
 # Mortality and gross somatic gain =============================================
 
