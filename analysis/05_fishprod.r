@@ -22,19 +22,18 @@ summary(dt_assemblage)
 # use taxaID as link
 dt_traits <- dt_sp %>% select(taxaID, fishbase_valid) %>% left_join(., dt_traits, by = 'fishbase_valid')
 
-# just IDs, time, trait taxa name, length
+# just IDs, time, trait taxa name
 prodtrait <- dt_assemblage %>% 
-  distinct(ID, DataID, seriesID, taxaID, gridcell, SamplingEventID, Year, Month, date_res, Length) %>%
+  distinct(DataID, seriesID, taxaID, gridcell, SamplingEventID, Year, Month, date_res) %>%
   inner_join(dt_traits, ., by = c('taxaID'))
 # automatically filters out the uncertains that don't qualify for trait matching
 # inner join somehow didn't quite work
-prodtrait <- prodtrait %>% filter(!is.na(Length))
 prodtrait <- prodtrait %>% filter(!is.na(Diet))
 
 # SST
 prodtrait <- left_join(prodtrait, dt_sst, by = c('gridcell', 'Year', 'Month', 'date_res')) %>% # SST
   select(!c(gridcell, date_res, Year, Month)) %>% # no longer need these space time links
-  rename(sstmean = sst, Size = Length, Species = fishbase_valid) # name matching
+  rename(sstmean = sst, Species = fishbase_valid) # name matching
 prodtrait <- prodtrait %>% relocate(ends_with('ID'), .after = sstmean)
 
 # our own version of tidytrait
@@ -53,43 +52,63 @@ summary(dt_prodDB)
 summary(prodtrait)
 # make db match
 
-# check if any fish are larger than their max size
-prodtrait %>% filter(Size > MaxSizeTL) %>% nrow
-prodtrait %>% filter(Size > MaxSizeTL) %>% View
-# 109k rows
-
-# limit observed size to be below max size
-prodtrait <- mutate(prodtrait, 
-                    Size = case_when(Size > MaxSizeTL ~ MaxSizeTL - 0.1, 
-                                     .default = Size))
-
 # Formula from Morais and Bellwood (2018)
-growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position + Method)
+growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
 
 # Kmax, growth coef ============================================================
+
+# small tweak to predKmax force pars override
+predKmax <- function(traits, dataset, fmod, params = NULL, niter, nrounds = 150, 
+                  verbose = 0, print_every = 1000, return = c("pred", "relimp", "models"), lowq = 0.25, uppq = 0.75) {
+  if (missing(dataset)) {
+    dataset <- db
+  }
+  modmatnd <- stats::model.matrix(fmod, data = traits)[, -1]
+  modmat <- stats::model.matrix(fmod, dataset)[, -1]
+  xgbmod <- list()
+  rel_imp <- list()
+  pred.grid <- as.data.frame(matrix(ncol = niter, nrow = nrow(traits), 
+                                    dimnames = list(NULL, paste0("Boot", 1:niter))))
+  for (i in 1:niter) {
+    set.seed(i)
+    xgbmod[[i]] <- xgboost::xgboost(modmat, label = dataset$Kmax, nrounds = nrounds, params = params, verbose = verbose, 
+                                    print_every = print_every)
+    rel_imp[[i]] <- xgboost::xgb.importance(colnames(modmat), 
+                                            model = xgbmod[[i]])
+    pred.grid[, i] <- stats::predict(xgbmod[[i]], newdata = modmatnd)
+    cat(paste("Bootstrapping the model, round", i), "\n")
+  }
+  df <- cbind(traits, Kmax = apply(pred.grid, 1, stats::median), 
+              Kmax_lowq = apply(pred.grid, 1, stats::quantile, probs = lowq), 
+              Kmax_uppq = apply(pred.grid, 1, stats::quantile, probs = uppq))
+  ret <- list(pred = df, relimp = rel_imp, models = xgbmod)
+  return(ret)
+}
+
 
 # Kmax estimate per species-gridcell-year-dataID / species-samplingeventid-dataID
 # recommended boostrapts on 100s to 1000s scale
 set.seed(24)
 prod_par <- rfishprod:::xgboostparams # make sure the parameters are loaded
 dt_prodDB <- dt_prodDB %>% select(!starts_with('trophic'))
-vbgf_par <- predKmax(traits = prodtrait, dataset = dt_prodDB, params = prod_par,
-           fmod = growthf, niter = 1000, return = 'pred')
+
+
+x = 20000
+# nrow(prodtrait)/30000
+dt_kmax <- as.list(rep(NA, (ceiling(nrow(prodtrait)/x))))
+for (i in 1:length(dt_kmax)) {
+  if (i == length(dt_kmax)) { # how to handle the last iteration
+    dt_kmax[[i]] <- predK(traits = prodtrait[((i-1)*x+1):nrow(prodtrait),],
+      dataset = dt_prodDB, fmod = growthf, params = prod_par, niter = 1000, lowq = 0.025, uppq = 0.975)
+  } else {
+      dt_kmax[[i]] <- predKmax(traits = prodtrait[((i-1)*x+1):(i*x),],
+        dataset = dt_prodDB, fmod = growthf, params = prod_par, niter = 1000, lowq = 0.025, uppq = 0.975)
+  }
+  print(paste0('Run ', i, ' of ', length(dt_kmax), ' complete'))
+}
 
 summary(vbgf_par$pred)
 rm(prodtrait, growthf)
-
-summary(vbgf_par$pred)
-
-# negative Kmax values
-# vbgf_par$pred %>% filter(Kmax <= 0) %>% View
-
-# try rerun
-negK <- vbgf_par$pred %>% filter(Kmax <= 0) %>% select(!starts_with('Kmax'))
-vbgf_par$pred <- vbgf_par$pred %>% filter(Kmax > 0)
-sort(unique(negK$Species))
-negK <- predKmax(negK, dataset = dt_prodDB, params = mod_params,
-                 fmod = growthf, niter = 1000, return = 'pred')
 
 # Mortality and gross somatic gain =============================================
 
