@@ -37,28 +37,29 @@ prodtrait <- left_join(prodtrait, dt_sst, by = c('gridcell', 'Year', 'Month', 'd
 prodtrait <- prodtrait %>% relocate(ends_with('ID'), .after = sstmean)
 
 # our own version of tidytrait
-sort(unique(prodtrait$Diet)) == sort(unique(dt_prodDB$Diet))
-sort(unique(prodtrait$Position)) == sort(unique(dt_prodDB$Position))
-# have to fit the db's factor ordering
-prodtrait <- prodtrait %>% 
-  mutate(Method = factor('Otolth', levels = sort(unique(dt_prodDB$Method))),
-         Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
-         Position = factor(Position, levels = levels(dt_prodDB$Position)))
-dt_prodDB <- dt_prodDB %>% 
-  mutate(Method = factor(Method, levels = sort(unique(dt_prodDB$Method))),
-         Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
-         Position = factor(Position, levels = levels(dt_prodDB$Position)))
-summary(dt_prodDB)
-summary(prodtrait)
+prodtrait <- prodtrait %>% mutate(
+  Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
+  Position = factor(Position, levels = sort(unique(dt_prodDB$Position))),
+  Method = factor('Otolth', levels = sort(unique(dt_prodDB$Method)))
+)
+
+prodtrait <- prodtrait %>% arrange(DataID, SamplingEventID)
+
+dt_prodDB <- dt_prodDB %>% mutate(
+  Diet = factor(Diet, levels = sort(unique(dt_prodDB$Diet))),
+  Position = factor(Position, levels = sort(unique(dt_prodDB$Position))),
+  Method = factor(Method, levels = sort(unique(dt_prodDB$Method)))
+)
 # make db match
+
+
+# Kmax, growth coef ============================================================
 
 # Formula from Morais and Bellwood (2018)
 growthf <- formula(~ sstmean + MaxSizeTL + Diet + Position)
 
-# Kmax, growth coef ============================================================
-
-# small tweak to predKmax force pars override
-predKmax <- function(traits, dataset, fmod, params = NULL, niter, nrounds = 150, 
+# small tweak to predKmax
+predK <- function(traits, dataset, fmod, params = NULL, niter, nrounds = 150, 
                   verbose = 0, print_every = 1000, return = c("pred", "relimp", "models"), lowq = 0.25, uppq = 0.75) {
   if (missing(dataset)) {
     dataset <- db
@@ -85,30 +86,30 @@ predKmax <- function(traits, dataset, fmod, params = NULL, niter, nrounds = 150,
   return(ret)
 }
 
+pars  <- rfishprod:::xgboostparams # make sure the parameters are loaded
+pars$max_depth <- 9
 
-# Kmax estimate per species-gridcell-year-dataID / species-samplingeventid-dataID
-# recommended boostrapts on 100s to 1000s scale
 set.seed(24)
-prod_par <- rfishprod:::xgboostparams # make sure the parameters are loaded
-dt_prodDB <- dt_prodDB %>% select(!starts_with('trophic'))
-
 
 x = 20000
-# nrow(prodtrait)/30000
-dt_kmax <- as.list(rep(NA, (ceiling(nrow(prodtrait)/x))))
-for (i in 1:length(dt_kmax)) {
-  if (i == length(dt_kmax)) { # how to handle the last iteration
-    dt_kmax[[i]] <- predK(traits = prodtrait[((i-1)*x+1):nrow(prodtrait),],
-      dataset = dt_prodDB, fmod = growthf, params = prod_par, niter = 1000, lowq = 0.025, uppq = 0.975)
-  } else {
-      dt_kmax[[i]] <- predKmax(traits = prodtrait[((i-1)*x+1):(i*x),],
-        dataset = dt_prodDB, fmod = growthf, params = prod_par, niter = 1000, lowq = 0.025, uppq = 0.975)
-  }
-  print(paste0('Run ', i, ' of ', length(dt_kmax), ' complete'))
-}
+# make an empty list to populate
+I = ceiling(nrow(prodtrait)/x)
 
-summary(vbgf_par$pred)
-rm(prodtrait, growthf)
+# iterate through the dataset
+for (i in 1:I) {
+  if (i == I) { # how to handle the last iteration
+    temp <- predK(traits = prodtrait[((i-1)*x+1):nrow(prodtrait),], 
+                          dataset = dt_prodDB, fmod = growthf, params = pars, niter = 1000, 
+                          lowq = 0.025, uppq = 0.975, verbose = T, return = 'pred')
+  } else {
+    temp <- predK(traits = prodtrait[((i-1)*x+1):(i*x),], 
+                          dataset = dt_prodDB, fmod = growthf, params = pars, niter = 1000, 
+                          lowq = 0.025, uppq = 0.975, verbose = T, return = 'pred')
+  }
+gc()
+readr::write_csv(temp$pred, file = 'dt_vbgf.csv', append = T) # write to an output file instead of to the environment (BIG objects)
+print(paste0('Run ', i, ' complete and saved'))
+}
 
 # Mortality and gross somatic gain =============================================
 
