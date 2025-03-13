@@ -5,6 +5,7 @@
 require(tidytable)
 require(stringr)
 require(rfishprod)
+require(readr)
 
 # PREP =========================================================================
 
@@ -20,9 +21,11 @@ summary(dt_assemblage)
 
 # traits
 # use taxaID as link
-dt_traits <- dt_sp %>% select(taxaID, fishbase_valid) %>% left_join(., dt_traits, by = 'fishbase_valid')
+dt_traits <- dt_sp %>% select(taxaID, fishbase_valid) %>% 
+  filter(!is.na(fishbase_valid)) %>% 
+  left_join(., dt_traits, by = 'fishbase_valid', relationship = 'many-to-one')
 
-# just IDs, time, trait taxa name
+# unique taxa at a given location and time
 prodtrait <- dt_assemblage %>% 
   distinct(DataID, seriesID, taxaID, gridcell, SamplingEventID, Year, Month, date_res) %>%
   inner_join(dt_traits, ., by = c('taxaID'))
@@ -111,90 +114,92 @@ readr::write_csv(temp$pred, file = 'dt_vbgf.csv', append = T) # write to an outp
 print(paste0('Run ', i, ' complete and saved'))
 }
 
+dt_vbgf <- read_csv('dt_vbgf.csv')
+dt_vbgf <- dt_vbgf %>% distinct(DataID, seriesID, SamplingEventID, taxaID, .keep_all = T)
+# should just be one Kmax estimate per species-location-time. if SST varies in a sample, it needs to be one value per sampling event id
+summary(dt_vbgf)
+dt_vbgf <- dt_vbgf %>% select(!ID)
+
+# require(ggplot2)
+# ggplot(data = dt_vbgf) +
+#   geom_density(aes(x = Kmax_lowq), fill = 'lightgreen', alpha = 0.5) +
+#   geom_density(aes(x = Kmax_uppq), fill = 'lightgreen', alpha = 0.5) +
+#   geom_density(aes(x = Kmax), fill = 'darkgreen', alpha = 0.5) +
+#   theme_classic(base_size = 13) + theme(panel.grid = element_blank()) +
+#   scale_x_log10()
+  
+  
 # Mortality and gross somatic gain =============================================
 
-# mortality
-vbgf_par <- vbgf_par %>% mutate(
-  M = predM(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax, method = 'Lorenzen'),
-  M_l = predM(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_lowq, method = 'Lorenzen'),
-  M_u = predM(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_uppq, method = 'Lorenzen'))
+# Kmax is estimated per species but now integrate with individual length records
 
-vbgf_par <- vbgf_par %>% filter(Kmax > 0) %>% # leave out the nonsensicals for now
-  mutate(
-    Size_t1 = applyVBGF(Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax), # rate of change day^-1
-    size_delta = Size_t1 - Size
-  ) # length change
+dt_prod <- dt_assemblage %>% 
+  select(ID, DataID, seriesID, taxaID, SamplingEventID, Abundance, Length, Length_lwr, Length_upr)
+dt_prod <- left_join(dt_prod, dt_vbgf, by = c('taxaID', 'DataID', 'seriesID', 'SamplingEventID'), 
+                     na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
+  select(!c(Diet, Position, Method))
+summary(dt_prod)
+View(dt_prod %>% filter(is.na(Kmax))) # the NAs are from species that didn't qualify for trait/prod
+
+# remove those records and constrain lengths
+dt_prod <- dt_prod %>% filter(!is.na(Kmax)) %>% 
+  mutate(Length = case_when(Length > MaxSizeTL ~ MaxSizeTL, .default = Length))
+
+
+# mortality
+dt_prod <- dt_prod %>% mutate(
+  M = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax, method = 'Lorenzen'),
+  M_l = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq, method = 'Lorenzen'),
+  M_u = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq, method = 'Lorenzen'))
+
+summary(dt_prod)
 
 # lowers and uppers refer to the Kmax value used!
 # not necessarily the lower or upper of that metric
-vbgf_par <- vbgf_par %>% 
-  mutate(biomass_gain = somaGain(a, b, Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax),
-         biomass_loss = somaLoss(M, Lmeas = Size, a, b),
+dt_prod <- dt_prod %>% 
+  mutate(biomass_gain = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax),
+         biomass_loss = somaLoss(M, Lmeas = Length, a, b),
+         biomass_gain_l = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
+         biomass_loss_l = somaLoss(M_l, Lmeas = Length, a, b),
+         biomass_gain_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq),
+         biomass_loss_u = somaLoss(M_u, Lmeas = Length, a, b),
          delta_g_day = biomass_gain - biomass_loss,
-         biomass_gain_l = somaGain(a, b, Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
-         biomass_loss_l = somaLoss(M_l, Lmeas = Size, a, b),
-         delta_g_day_l = biomass_gain_l - biomass_loss_l,
-         biomass_gain_u = somaGain(a, b, Lmeas = Size, Lmax = MaxSizeTL, Kmax = Kmax_uppq),
-         biomass_loss_u = somaLoss(M_u, Lmeas = Size, a, b),
-         delta_g_day_u = biomass_gain_u - biomass_loss)
+         delta_g_day_l = biomass_gain_l - biomass_loss_u,
+         delta_g_day_u = biomass_gain_u - biomass_loss_l
+         )
 
-summary(vbgf_par)
+summary(dt_prod)
+
+# dt_prod %>% filter(delta_g_day > 10) %>% View # make sure the large increases are proportional
+# dt_prod %>% filter(delta_g_day < 0) %>% View
 # don't need to keep traits
-vbgf_par <- vbgf_par %>% mutate(rareID = paste(DataID, gridcell, sep = '_')) %>% 
-  select(rareID, SamplingEventID, Species, Size, Kmax:delta_g_day_u)
+dt_prod <- dt_prod %>% select(!c(Species:sstmean))
+
 
 # Apply to assemblage data =====================================================
 
-colnames(dt_rareass)
-dt_rareass <- dt_rareass %>% 
-  # known uncertain blind species names for productivity calculations
-  mutate(prod_genus_sp = case_when(str_detect(genus_sp, '(?<=idae)\\ssp\\d*$') ~ str_remove(genus_sp, '\\ssp\\d*$'),
-                                   .default = str_remove(genus_sp, '\\d+')))
-
-# match up
-dt_prod <- vbgf_par %>% select(rareID:Size, starts_with('delta')) %>% 
-  left_join(dt_rareass, ., by = c('rareID', 'SamplingEventID', 
-                                  'prod_genus_sp' = 'Species',
-                                  'Length' = 'Size'))
-# aggregate to species level
+# scale by abundance
 dt_prod <- dt_prod %>% 
-  group_by(pick(!c(Abundance, starts_with('delta')))) %>%
-  # multiply by count
-  summarise(delta_g_day = Abundance * delta_g_day,
-            delta_g_day_l = Abundance * delta_g_day_l,
-            delta_g_day_u = Abundance * delta_g_day_u) %>% 
-  ungroup %>% group_by(pick(!c(Length, delta_g_day, delta_g_day_l, delta_g_day_u))) %>% 
-  # aggregate total length and biomass change for the species
-  summarise(delta_g_day = sum(delta_g_day, na.rm = T),
-            delta_g_day_l = sum(delta_g_day_l, na.rm = T),
-            delta_g_day_u = sum(delta_g_day_u, na.rm = T)) %>% ungroup
+  mutate(across(biomass_gain:delta_g_day_u, ~ Abundance * .x)) %>% 
+  select(!Abundance)
 
-# aggregate to site level
-
+# aggregate to sampling event level
 dt_prod <- dt_prod %>% ungroup %>% 
-  group_by(rareID, Year, SamplingEventID) %>%
-  summarise(delta_g_day = sum(delta_g_day, na.rm = T),
-            delta_g_day_l = sum(delta_g_day_l, na.rm = T),
-            delta_g_day_u = sum(delta_g_day_u, na.rm = T)) %>% 
-  # convert to kg/yr
-  mutate(delta_g_day = delta_g_day * 365 / 1000,
-         delta_g_day_l = delta_g_day_l * 365 / 1000,
-         delta_g_day_u = delta_g_day_u * 365 / 1000) %>% ungroup
+  group_by(DataID, seriesID, SamplingEventID) %>% 
+  summarise(across(biomass_gain:delta_g_day_u, ~ sum(.x))) %>% ungroup
+summary(dt_prod)
+
+# convert to kg/yr
+dt_prod <- dt_prod %>% mutate(across(biomass_gain:delta_g_day_u, ~ .x * 365 / 1000))
 
 colnames(dt_prod) <- str_replace(colnames(dt_prod), 'delta\\_g\\_day', 'prod_kg_yr')
 
 # kg/ha/yr
-dt_prod <- dt_rareass %>% distinct(rareID, DataID) %>% 
-  left_join(dt_meta[c(1,7)], ., by = "DataID") %>% 
+dt_prod <- dt_meta %>% distinct(DataID, `Grain size`) %>% 
   mutate(Area = str_extract(`Grain size`, '\\d{2,}')) %>% 
-  select(DataID, rareID, Area) %>% 
-  left_join(dt_prod, ., by = "rareID")
+  select(!`Grain size`) %>% 
+  left_join(dt_prod, ., by = "DataID")
 dt_prod$Area <- as.numeric(dt_prod$Area)
 # unit conversion
 dt_prod <- dt_prod %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
-
-## Figures ===================================================================
-
-
-  
 
