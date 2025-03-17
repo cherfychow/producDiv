@@ -12,8 +12,10 @@ require(ggplot2)
 
 # CALCULATE OBSERVED RICHNESS ======================================================================
 
-dt_div <- dt_rareass %>% group_by(DataID, seriesID, SamplingEventID) %>% 
-  summarise(S = n_distinct(taxaID))
+dt_div <- dt_sp %>% select(taxaID, worms_valid) %>% 
+  left_join(dt_rareass, ., by = 'taxaID') %>% 
+  group_by(DataID, seriesID, SamplingEventID, Year) %>% 
+  summarise(S = n_distinct(worms_valid)) %>% ungroup
 
 # ASYMPTOTIC RICHNESS ==============================================================================
 # use dt_div to index since it's already structured by rareID + samplingevents

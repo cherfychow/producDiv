@@ -238,18 +238,4 @@ dt_single <- dt_time %>%
   select(!c(Location, rareID)) %>% bind_rows(dt_single, .)
 
 rm(single)
-
-# CALCULATE RICHNESS FOR SINGLE YEAR STUDIES =======================================================
-
-dt_div_single <- dt_single %>% mutate(rareID = paste(DataID, gridcell, sep = '_')) %>%
-  group_by(rareID, SamplingEventID) %>%
-  summarise(S = n_distinct(worms_valid))
-summary(dt_div_single)
-
-ggplot(data = dt_div_single) +
-  geom_histogram(aes(x = S)) + theme_classic()
-
-# I don't think time series or single time points will be analysed together, so delete raw data
-rm(dt_assemblage)
-
-
+dt_single$seriesID <- with(dt_single, paste(DataID, gridcell, sep = '_'))
