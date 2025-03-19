@@ -119,14 +119,6 @@ dt_vbgf <- dt_vbgf %>% distinct(DataID, seriesID, SamplingEventID, taxaID, .keep
 # should just be one Kmax estimate per species-location-time. if SST varies in a sample, it needs to be one value per sampling event id
 summary(dt_vbgf)
 dt_vbgf <- dt_vbgf %>% select(!ID)
-
-# require(ggplot2)
-# ggplot(data = dt_vbgf) +
-#   geom_density(aes(x = Kmax_lowq), fill = 'lightgreen', alpha = 0.5) +
-#   geom_density(aes(x = Kmax_uppq), fill = 'lightgreen', alpha = 0.5) +
-#   geom_density(aes(x = Kmax), fill = 'darkgreen', alpha = 0.5) +
-#   theme_classic(base_size = 13) + theme(panel.grid = element_blank()) +
-#   scale_x_log10()
   
   
 ## Mortality and gross somatic gain =============================================
@@ -299,14 +291,6 @@ temp <- predK(traits = prodtrait,
 
 prod_single <- samplelink %>% distinct(taxaID, DataID, seriesID, SamplingEventID, Species, .keep_all = T) %>% 
   left_join(., temp$pred, by = c('Species', 'sstmean'))
-
-# require(ggplot2)
-# ggplot(data = dt_vbgf) +
-#   geom_density(aes(x = Kmax_lowq), fill = 'lightgreen', alpha = 0.5) +
-#   geom_density(aes(x = Kmax_uppq), fill = 'lightgreen', alpha = 0.5) +
-#   geom_density(aes(x = Kmax), fill = 'darkgreen', alpha = 0.5) +
-#   theme_classic(base_size = 13) + theme(panel.grid = element_blank()) +
-#   scale_x_log10()
 
 
 ## Mortality and gross somatic gain =============================================
