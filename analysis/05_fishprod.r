@@ -121,81 +121,70 @@ summary(dt_vbgf)
 dt_vbgf <- dt_vbgf %>% select(!ID)
   
   
-## Mortality and gross somatic gain =============================================
+## Gross somatic gain =============================================
 
 # Kmax is estimated per species but now integrate with individual length records
 
-dt_prod <- dt_rareass %>% 
+dt_prod_rare <- dt_rareass %>% 
   select(ID, DataID, seriesID, taxaID, SamplingEventID, Abundance, Length, Length_lwr, Length_upr)
-dt_prod <- left_join(dt_prod, dt_vbgf, by = c('taxaID', 'DataID', 'seriesID', 'SamplingEventID'), 
+dt_prod_rare <- left_join(dt_prod_rare, dt_vbgf, by = c('taxaID', 'DataID', 'seriesID', 'SamplingEventID'), 
                      na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
   select(!c(Diet, Position, Method))
-summary(dt_prod)
-# View(dt_prod %>% filter(is.na(Kmax))) # the NAs are from species that didn't qualify for trait/prod
-
+summary(dt_prod_rare)
+# the NAs are from species that didn't qualify for trait/prod
 # remove those records and constrain lengths
-dt_prod <- dt_prod %>% filter(!is.na(Kmax)) %>% 
-  mutate(Length = case_when(Length > MaxSizeTL ~ MaxSizeTL, .default = Length))
+dt_prod_rare <- dt_prod_rare %>% filter(!is.na(Kmax)) %>% 
+  mutate(Length = case_when(Length >= MaxSizeTL ~ MaxSizeTL - 0.2, .default = Length))
 
-# mortality
-dt_prod <- dt_prod %>% mutate(
-  M = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax, method = 'Lorenzen'),
-  M_l = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq, method = 'Lorenzen'),
-  M_u = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq, method = 'Lorenzen'))
+summary(dt_prod_rare)
 
-summary(dt_prod)
+# lowers and uppers refer to the metric calculated with the Kmax upper and lowers
+# not necessarily the metric's own error propagated
 
-# lowers and uppers refer to the Kmax value used!
-# not necessarily the lower or upper of that metric
-dt_prod <- dt_prod %>% 
+dt_prod_rare <- dt_prod_rare %>% 
   mutate(biomass_gain = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax),
-         biomass_loss = somaLoss(M, Lmeas = Length, a, b),
          biomass_gain_l = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
-         biomass_loss_l = somaLoss(M_l, Lmeas = Length, a, b),
-         biomass_gain_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq),
-         biomass_loss_u = somaLoss(M_u, Lmeas = Length, a, b),
-         delta_g_day = biomass_gain - biomass_loss,
-         delta_g_day_l = biomass_gain_l - biomass_loss_u,
-         delta_g_day_u = biomass_gain_u - biomass_loss_l
+         biomass_gain_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq)
          )
 
-summary(dt_prod)
+summary(dt_prod_rare)
 
 # dt_prod %>% filter(delta_g_day > 10) %>% View # make sure the large increases are proportional
 # dt_prod %>% filter(delta_g_day < 0) %>% View
 # don't need to keep traits
-dt_prod <- dt_prod %>% select(!c(Species:sstmean))
+dt_prod_rare <- dt_prod_rare %>% select(!c(Species:sstmean))
 
 
 ## Apply to assemblage data =====================================================
 
 # scale by abundance
-dt_prod <- dt_prod %>% 
-  mutate(across(biomass_gain:delta_g_day_u, ~ Abundance * .x)) %>% 
+dt_prod_rare <- dt_prod_rare %>% 
+  mutate(across(starts_with('biomass_gain'), ~ Abundance * .x)) %>% 
   select(!Abundance)
 
 # aggregate to sampling event level
-dt_prod <- dt_prod %>% ungroup %>% 
+dt_prod_rare <- dt_prod_rare %>% ungroup %>% 
   group_by(DataID, seriesID, SamplingEventID) %>% 
-  summarise(across(biomass_gain:delta_g_day_u, ~ sum(.x))) %>% ungroup
-summary(dt_prod)
+  summarise(across(starts_with('biomass_gain'), ~ sum(.x))) %>% ungroup
+summary(dt_prod_rare)
 
 # convert to kg/yr
-dt_prod <- dt_prod %>% mutate(across(biomass_gain:delta_g_day_u, ~ .x * 365 / 1000))
+dt_prod <- dt_prod %>% mutate(across(starts_with('biomass_gain'), ~ .x * 365 / 1000))
 
-colnames(dt_prod) <- str_replace(colnames(dt_prod), 'delta\\_g\\_day', 'prod_kg_yr')
+colnames(dt_prod_rare) <- str_replace(colnames(dt_prod_rare), 'biomass\\_gain', 'prod_kg_yr')
 
 dt_meta$DataID <- str_to_lower(dt_meta$DataID)
-dt_prod$DataID <- str_to_lower(dt_prod$DataID)
+dt_prod_rare$DataID <- str_to_lower(dt_prod_rare$DataID)
+
 # kg/ha/yr
-dt_prod <- dt_meta %>% distinct(DataID, `Grain size`) %>% 
+dt_prod_rare <- dt_meta %>% distinct(DataID, `Grain size`) %>% 
   mutate(Area = str_extract(`Grain size`, '[0-9\\.]+') %>% as.numeric) %>% 
-  left_join(dt_prod, ., by = "DataID") %>% 
+  left_join(dt_prod_rare, ., by = "DataID") %>% 
   select(!`Grain size`)
 
-summary(dt_prod)
+summary(dt_prod_rare)
 # unit conversion
-dt_prod <- dt_prod %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
+dt_prod_rare <- dt_prod_rare %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
 
 
 # SINGLE TIME DATA =========================================================================
@@ -307,13 +296,7 @@ summary(dt_prod_single)
 
 # remove those records and constrain lengths
 dt_prod_single <- dt_prod_single %>% filter(!is.na(Kmax)) %>% 
-  mutate(Length = case_when(Length > MaxSizeTL ~ MaxSizeTL, .default = Length))
-
-# mortality
-dt_prod_single <- dt_prod_single %>% mutate(
-  M = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax, method = 'Lorenzen'),
-  M_l = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq, method = 'Lorenzen'),
-  M_u = predM(Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq, method = 'Lorenzen'))
+  mutate(Length = case_when(Length > MaxSizeTL ~ MaxSizeTL - 0.2, .default = Length))
 
 summary(dt_prod_single)
 
@@ -321,14 +304,8 @@ summary(dt_prod_single)
 # not necessarily the lower or upper of that metric
 dt_prod_single <- dt_prod_single %>% 
   mutate(biomass_gain = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax),
-         biomass_loss = somaLoss(M, Lmeas = Length, a, b),
          biomass_gain_l = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
-         biomass_loss_l = somaLoss(M_l, Lmeas = Length, a, b),
-         biomass_gain_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq),
-         biomass_loss_u = somaLoss(M_u, Lmeas = Length, a, b),
-         delta_g_day = biomass_gain - biomass_loss,
-         delta_g_day_l = biomass_gain_l - biomass_loss_u,
-         delta_g_day_u = biomass_gain_u - biomass_loss_l
+         biomass_gain_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq)
   )
 
 summary(dt_prod_single)
@@ -343,19 +320,19 @@ dt_prod_single <- dt_prod_single %>% select(!c(Species:sstmean))
 
 # scale by abundance
 dt_prod_single <- dt_prod_single %>% 
-  mutate(across(biomass_gain:delta_g_day_u, ~ Abundance * .x)) %>% 
+  mutate(across(starts_with('biomass'), ~ Abundance * .x)) %>% 
   select(!Abundance)
 
 # aggregate to sampling event level
 dt_prod_single <- dt_prod_single %>% ungroup %>% 
   group_by(DataID, seriesID, SamplingEventID) %>% 
-  summarise(across(biomass_gain:delta_g_day_u, ~ sum(.x))) %>% ungroup
+  summarise(across(starts_with('biomass'), ~ sum(.x))) %>% ungroup
 summary(dt_prod_single)
 
 # convert to kg/yr
-dt_prod_single <- dt_prod_single %>% mutate(across(biomass_gain:delta_g_day_u, ~ .x * 365 / 1000))
+dt_prod_single <- dt_prod_single %>% mutate(across(starts_with('biomass'), ~ .x * 365 / 1000))
 
-colnames(dt_prod_single) <- str_replace(colnames(dt_prod_single), 'delta\\_g\\_day', 'prod_kg_yr')
+colnames(dt_prod_single) <- str_replace(colnames(dt_prod_single), 'biomass\\_gain', 'prod_kg_yr')
 
 dt_meta$DataID <- str_to_lower(dt_meta$DataID)
 dt_prod_single$DataID <- str_to_lower(dt_prod_single$DataID)

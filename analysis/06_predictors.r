@@ -34,13 +34,13 @@ grid_sf$biogeo <- st_drop_geometry(ecoR)$region[biogeo_match]
 # compile a data table of predictor variables for each time series sampling event
 vars_rare <- dt_rareass %>% 
   distinct(DataID, seriesID, SamplingEventID, gridcell, Year, Latitude, Longitude) %>% 
-  group_by(pick(DataID:Year)) %>% 
-  summarise(Latitude = mean(Latitude), Longitude = mean(Longitude)) %>% 
+  group_by(DataID, seriesID, SamplingEventID, gridcell, Year) %>% 
+  summarise(Latitude = mean(Latitude, na.rm = T), Longitude = mean(Longitude, na.rm = T)) %>% 
   # observed richness
   left_join(., dt_div, by = colnames(dt_div)[-5])
 
 # productivity
-vars_rare <- dt_prod %>% select(ends_with('ID'), starts_with('prod_kg')) %>% 
+vars_rare <- dt_prod_rare %>% select(ends_with('ID'), starts_with('prod_kg')) %>% 
   left_join(vars_rare, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
 
 vars_rare <- left_join(vars_rare, st_drop_geometry(grid_sf), by = 'gridcell')
@@ -53,7 +53,7 @@ vars_single <- dt_sp %>% select(taxaID, worms_valid) %>%
   mutate(DataID = str_to_lower(DataID))
 vars_single <- vars_single %>% 
   distinct(DataID, seriesID, SamplingEventID, gridcell, Year, Latitude, Longitude, worms_valid) %>% 
-  group_by(pick(DataID:Year)) %>% 
+  group_by(DataID, seriesID, SamplingEventID, gridcell, Year) %>% 
   summarise(Latitude = mean(Latitude), Longitude = mean(Longitude), S = n_distinct(worms_valid)) %>% ungroup
 
 # productivity
