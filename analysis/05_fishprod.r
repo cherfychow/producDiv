@@ -169,9 +169,9 @@ dt_prod_rare <- dt_prod_rare %>% ungroup %>%
 summary(dt_prod_rare)
 
 # convert to kg/yr
-dt_prod <- dt_prod %>% mutate(across(starts_with('biomass_gain'), ~ .x * 365 / 1000))
+dt_prod <- dt_prod %>% mutate(across(starts_with('biomass_gain'), ~ .x / 1000))
 
-colnames(dt_prod_rare) <- str_replace(colnames(dt_prod_rare), 'biomass\\_gain', 'prod_kg_yr')
+colnames(dt_prod_rare) <- str_replace(colnames(dt_prod_rare), 'biomass\\_gain', 'prod_kg')
 
 dt_meta$DataID <- str_to_lower(dt_meta$DataID)
 dt_prod_rare$DataID <- str_to_lower(dt_prod_rare$DataID)
@@ -330,9 +330,9 @@ dt_prod_single <- dt_prod_single %>% ungroup %>%
 summary(dt_prod_single)
 
 # convert to kg/yr
-dt_prod_single <- dt_prod_single %>% mutate(across(starts_with('biomass'), ~ .x * 365 / 1000))
+dt_prod_single <- dt_prod_single %>% mutate(across(starts_with('biomass'), ~ .x / 1000))
 
-colnames(dt_prod_single) <- str_replace(colnames(dt_prod_single), 'biomass\\_gain', 'prod_kg_yr')
+colnames(dt_prod_single) <- str_replace(colnames(dt_prod_single), 'biomass\\_gain', 'prod_kg')
 
 dt_meta$DataID <- str_to_lower(dt_meta$DataID)
 dt_prod_single$DataID <- str_to_lower(dt_prod_single$DataID)

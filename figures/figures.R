@@ -80,19 +80,56 @@ f_map_eco <- ggplot() +
 f_map_eco / f_map
 
 
-# Spatial prod ~ S
+# Spatial single time point model ==================================================================
 
 style <- theme_bw(base_size = 13) + theme(panel.grid = element_blank())
 
+
 ggplot(data = vars_single) +
-  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅yr"^-1~")")) +
-  geom_errorbar(aes(x = S, ymin = prod_kg_yr_l, ymax = prod_kg_yr_u),
-                size = 0.2, colour = '#666') +
-  geom_point(aes(x = S, y = prod_kg_yr, fill = biogeo), shape = 21, size = 2, 
-             colour = '#000', alpha = 0.5) +
+  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~")")) +
+  geom_errorbar(aes(x = S, ymin = prod_kg_l, ymax = prod_kg_u),
+                linewidth = 0.2, colour = '#666') +
+  geom_point(aes(x = S, y = prod_kg, colour = biogeo, fill = biogeo), 
+             shape = 21, size = 2, alpha = 0.5) +
+  geom_ribbon(data = spatial2_pred, aes(ymin = prod_Spar_l, ymax = prod_Spar_u, x = S),
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  geom_line(data = spatial2_pred, aes(x = S, y = prod_Spar), colour = '#000') +
+  scale_colour_cherulean(palette = 'quoyi', discrete = T) +
   scale_fill_cherulean(palette = 'quoyi', discrete = T) +
-  style + 
-  scale_y_log10()
+  scale_y_log10() + scale_x_log10() + style +
+  guides(colour = 'none', fill = 'none')
+
+# with human gravity
+ggplot(data = vars_single) +
+  labs(x = 'Human gravity', y = bquote("Productivity (kg⋅ha"^-1~")")) +
+  geom_errorbar(aes(x = hgrav2 + 1, ymin = prod_kg_l, ymax = prod_kg_u),
+                linewidth = 0.2, colour = '#666') +
+  geom_point(aes(x = hgrav2 + 1, y = prod_kg, colour = biogeo, fill = biogeo), 
+             shape = 21, size = 2, alpha = 0.5) +
+  geom_ribbon(data = spatial2_pred, 
+              aes(ymin = prod_gpar_l, ymax = prod_gpar_u, x = hgrav2 + 1),
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  geom_line(data = spatial2_pred, 
+            aes(x = hgrav2 + 1, y = prod_gpar), colour = '#000') +
+  scale_colour_cherulean(palette = 'quoyi', discrete = T) +
+  scale_fill_cherulean(palette = 'quoyi', discrete = T) +
+  scale_y_log10() + scale_x_log10() + style +
+  guides(colour = 'none', fill = 'none')
+
+# split by bioregion
+ggplot(data = vars_single) +
+  labs(x = 'log(S)', y = bquote("log Productivity (kg⋅ha"^-1~")")) +
+  geom_errorbar(aes(x = log(S), ymin = log(prod_kg_l), ymax = log(prod_kg_u)),
+                linewidth = 0.2, colour = '#666') +
+  geom_point(aes(x = log(S), y = log(prod_kg), colour = biogeo, fill = biogeo), 
+             shape = 21, size = 2, alpha = 0.5) +
+  # geom_ribbon(data = spatial_Spartial, aes(ymin = lwr, ymax = upr, x = S),
+  #             fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  # geom_line(data = spatial_Spartial, aes(x = S, y = .epred), colour = '#000') +
+  scale_colour_cherulean(palette = 'quoyi', discrete = T) +
+  scale_fill_cherulean(palette = 'quoyi', discrete = T) +
+  guides(colour = 'none', fill = 'none') +
+  style + facet_wrap(~biogeo)
 
 
 # ∆Prod ~ ∆S, long term trajectory
@@ -102,7 +139,7 @@ vars_time_long <- vars_time_long %>% mutate(quad = case_when(.default = 'neg',
                                                              S_slope > 0 & prod_slope > 0 ~ 'pos',
                                                              S_slope <= 0 & prod_slope <= 0 ~ 'pos'))
 f_Timelong1 <- ggplot(data = vars_time_long) +
-  labs(x = '∆log(S)', y = bquote("∆log(Productivity) (kg⋅ha"^-1~"⋅yr"^-2~")")) +
+  labs(x = "∆log S", y = bquote("∆log Productivity (kg⋅ha"^-1~")")) +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
   geom_linerange(aes(xmin = S_slope - 1.96*S_se, 
@@ -113,6 +150,9 @@ f_Timelong1 <- ggplot(data = vars_time_long) +
                      x = S_slope, colour = quad), size = 0.2, alpha = 0.25) +
   geom_point(aes(x = S_slope, y = prod_slope, colour = quad), size = 2, alpha = 0.3) +
   geom_abline(aes(intercept = 0, slope = 1), linetype = 'dashed', colour = '#444', alpha = 0.6) +
+  geom_ribbon(data = T2_pred, aes(ymin = prod_Spar_l, ymax = prod_Spar_u, x = S_slope),
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  geom_line(data = T2_pred, aes(x = S_slope, y = prod_Spar), colour = '#000') +
   guides(colour = 'none') +
   scale_colour_manual(values = c('#114c54', '#d989e5')) +
   scale_x_continuous(limits = c(-3, 3)) +
@@ -131,9 +171,23 @@ f_Timelongy <- ggplot(data = vars_time_long) +
 f_Timelongx + plot_spacer() + f_Timelong1 + f_Timelongy + 
   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
 
+ggplot(data = vars_time_long) +
+  labs(x = "Human gravity", y = bquote("∆log Productivity (kg⋅ha"^-1~")")) +
+  geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
+  geom_linerange(aes(ymin = prod_slope - 1.96*prod_se, 
+                     ymax = prod_slope + 1.96*prod_se, 
+                     x = hgrav2, colour = quad), size = 0.2, alpha = 0.25) +
+  geom_point(aes(x = hgrav2, y = prod_slope, colour = quad), size = 2, alpha = 0.3) +
+  geom_ribbon(data = T2_pred, aes(ymin = prod_gpar_l, ymax = prod_gpar_u, x = hgrav2),
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  geom_line(data = T2_pred, aes(x = hgrav2, y = prod_gpar), colour = '#000') +
+  guides(colour = 'none') +
+  scale_x_log10() +
+  scale_colour_manual(values = c('#114c54', '#d989e5')) + style
+
 # density grid
 ggplot(data = vars_time_long) +
-  labs(x = '∆S', y = bquote("∆Productivity (kg⋅ha"^-1~"⋅yr"^-2~")"), 
+  labs(x = "∆log S", y = bquote("∆log Productivity (kg⋅ha"^-1~")"), 
        title = 'Diversity-productivity trajectories (time series slope)') +
   stat_bin2d(bins = 100, aes(x = S_slope, y = prod_slope)) +
   scale_fill_cherulean(palette = 'quoyi', discrete = F) +
@@ -146,7 +200,7 @@ vars_time <- vars_time %>% mutate(quad = case_when(.default = 'neg',
                                                    logratio1_S <= 0 & logratio1_prod <= 0 ~ 'pos'))
 
 f_Timeadj1 <- ggplot(data = vars_time) +
-  labs(x = '∆log(S)', y = bquote("∆log(Productivity) (kg⋅ha"^-1~"⋅yr"^-2~")")) +
+  labs(x = bquote('∆log'[2]~'(S)'), y = bquote("∆log"[2]~"(Productivity) (kg⋅ha"^-1~"⋅yr"^-2~")")) +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
   geom_linerange(aes(xmin = logratio1_S_l, 
@@ -159,18 +213,18 @@ f_Timeadj1 <- ggplot(data = vars_time) +
   geom_abline(aes(intercept = 0, slope = 1), linetype = 'dashed', colour = '#444', alpha = 0.6) +
   guides(colour = 'none') +
   scale_colour_manual(values = c('#114c54', '#d989e5')) +
-  scale_x_continuous(limits = c(-4, 4)) +
-  scale_y_continuous(limits = c(-6, 8)) + style
+  scale_x_continuous(limits = c(-3.5, 4)) +
+  scale_y_continuous(limits = c(-4, 8)) + style
 
 f_Timeadjx <- ggplot(data = vars_time) +
   geom_density(aes(x = logratio1_S), fill = '#CCC', colour = '#666') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
-  theme_void() + scale_x_continuous(limits = c(-4, 4))
+  theme_void() + scale_x_continuous(limits = c(-3.5, 4))
 
 f_Timeadjy <- ggplot(data = vars_time) +
   geom_density(aes(y = logratio1_prod), fill = '#CCC', colour = '#666') +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
-  theme_void() + scale_y_continuous(limits = c(-6, 8))
+  theme_void() + scale_y_continuous(limits = c(-4, 8))
 
 f_Timeadjx + plot_spacer() + f_Timeadj1 + f_Timeadjy + 
   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))

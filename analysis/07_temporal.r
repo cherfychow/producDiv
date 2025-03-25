@@ -67,9 +67,9 @@ vars_time$logratio1_S_l <- NA
 vars_time$logratio1_S_u <- NA
 
 # only observed richness for now because productivity has upper and lowers
+# the single sample ones don't need modelling
 for (i in which(vars_time$sample_n == 1 & vars_time$Year_rel != 1)) {
   # ignore timepoint 1 because it doesn't have a t-1
-  # also only over 1 year differences
     years <- c(vars_time$Year_rel[i], (vars_time$Year_rel[i-1]))
     temp <- vars_rare %>% ungroup %>% 
       filter(DataID == vars_time$DataID[i],
