@@ -5,7 +5,7 @@
 require(tidytable)
 require(brms)
 require(tidybayes)
-require(emmeans)
+require(performance)
 require(ggdist)
 
 # gotta scale
@@ -27,7 +27,8 @@ mod_spatial <- brm(data = vars_single,
                    formula = prod_kg_yr ~ log(S) + hgravity + (1|DataID) + (1|gridcell),
                    family = Gamma(link = 'log'),
                    prior = spatial_priors, iter = 5000)
-
+summary(mod_spatial)
+model_performance(mod_spatial)
 
 ## POStERIORS PREDICtIONS ==========================================================================
 
@@ -77,6 +78,7 @@ mod_t <- brm(data = vars_time_long,
                  prior = t_priors, iter = 5000)
 
 summary(mod_t)
+model_performance(mod_t)
 
 ## POStERIORS PREDICtIONS ==========================================================================
  

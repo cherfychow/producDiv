@@ -282,7 +282,7 @@ prod_single <- samplelink %>% distinct(taxaID, DataID, seriesID, SamplingEventID
   left_join(., temp$pred, by = c('Species', 'sstmean'))
 
 
-## Mortality and gross somatic gain =============================================
+## Gross somatic gain =============================================================================
 
 # Kmax is estimated per species but now integrate with individual length records
 
