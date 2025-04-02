@@ -78,19 +78,19 @@ summary(vars_single)
 # NULL SPATIAL MODEL ===============================================================================
 
 # weakly informative priors
-null_priors <- default_prior(prod_null ~ log(S) + log(hgrav2) + (1|DataID) + (1|gridcell),
+null_priors <- default_prior(prod_null ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
                                 data = vars_single, family = Gamma(link = 'log'))
 null_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
 null_priors$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 mod_null <- brm(data = vars_single,
-                   formula = prod_kg_yr ~ log(S) + hgravity + (1|DataID) + (1|gridcell),
+                   formula = prod_null ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
                    family = Gamma(link = 'log'),
                    prior = null_priors, iter = 5000)
 
 
-## POStERIORS PREDICtIONS ==========================================================================
+## POSTERIORS PREDICtIONS ==========================================================================
 
 # get posterior draws
 null_draws <- tidy_draws(mod_null) %>% 

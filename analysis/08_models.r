@@ -181,13 +181,15 @@ mod_geo <- brm(data = vars_single,
 
 # get posterior draws
 geo_draws <- tidy_draws(mod_geo) %>% 
-  select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
+  select(starts_with(c('b', 'sd')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-geo_draws <- geo_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+geo_draws <- geo_draws %>% mutate(var_type = case_when(vars %in% c('b_logS', 'b_loghgrav2P1', 'sd_biogeo__logS') ~ 'main',
                                                                .default = 'randommodel'),
                                           prettyvar = case_when(vars == 'b_logS' ~ 'S',
                                                                 vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                                vars == 'sd_biogeo__logS' ~ '(S|Biogeo)',
+                                                                vars == 'sd_biogeo__Intercept' ~ '(1|Biogeo)',
                                                                 vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
                                                                 vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
                                                                 vars == 'Intercept' ~ 'α',
@@ -195,17 +197,32 @@ geo_draws <- geo_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~
                                                                 .default = vars))
 
 # model partial predictions
-newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
-                               max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgrav2 = runif(500, min(vars_single$hgrav2), max(vars_single$hgrav2)))
+temp <- vars_single %>% ungroup %>% group_by(biogeo) %>% 
+  summarise(minS = min(S), maxS = max(S),
+            minG = min(hgrav2), maxG = max(hgrav2))
+for (i in 1:nrow(temp)) {
+  if (i > 1) {
+    newdata <- tidytable(biogeo = temp$biogeo[i], 
+                         S = runif(100, temp$minS[i], temp$maxS[i]) %>% floor(),
+                         hgrav2 = runif(100, temp$minG[i], temp$maxG[i]) %>% floor()) %>% 
+      bind_rows(newdata, .)
+  } else {
+    newdata <- tidytable(biogeo = temp$biogeo[i], 
+                         S = runif(100, temp$minS[i], temp$maxS[i]) %>% floor(),
+                         hgrav2 = runif(100, temp$minG[i], temp$maxG[i]))
+  }
+}
+
 
 # partial effect of ∆S
 geo_partialpred <- newdata %>% mutate(hgrav2 = mean(vars_single$hgrav2)) %>% 
-  epred_draws(mod_geo, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
+  epred_draws(mod_geo, re_formula = prod_kg ~ log(S) + log(hgrav2 + 1) + (1 + log(S) | biogeo), 
+              newdata = ., value = 'prod_S') %>% ungroup %>% 
   select(!hgrav2)
 # partial effect of human gravity
 geo_partialpred <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
-  epred_draws(mod_geo, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
+  epred_draws(mod_geo, re_formula = prod_kg ~ log(S) + log(hgrav2 + 1) + (1 + log(S) | biogeo), 
+              newdata = ., value = 'prod_hgrav') %>% 
   ungroup %>% select(hgrav2, prod_hgrav) %>% 
   bind_cols(geo_partialpred, .) %>% ungroup
 rm(newdata)

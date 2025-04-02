@@ -23,7 +23,7 @@ world <- ne_coastline('medium', returnclass = 'sf') %>%
   st_make_valid(.) %>% st_break_antimeridian(., lon_0 = 160)
 world <- st_cast(world, to = 'MULTIPOLYGON')
 
-# make a spatial point object with the data
+# make a geo point object with the data
 point_rare <- dt_rareass %>% group_by(DataID, rareID) %>% 
   mutate(Duration = max(Year) - min(Year) + 1) %>%
   distinct(Longitude, Latitude, DataID, rareID, Year, Duration) %>%
@@ -85,7 +85,76 @@ f_map_eco / f_map
 
 # NULL MODEL  ======================================================================================
 
+# posterior distributions
 
+f_null_post1 <- ggplot(null_draws %>% filter(var_type == 'fixed')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95) +  
+  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  stat_spike(aes(x = values, y = prettyvar, ), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_null_post2 <- ggplot(null_draws %>% filter(var_type == 'randommodel')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95) +  
+  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  stat_spike(aes(x = values, y = prettyvar), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_null_post <- f_null_post1 / f_null_post2 + plot_layout(heights = c(2, 5))
+f_null_post
+
+f_null <- ggplot(data = vars_single) +
+  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
+  geom_linerange(aes(x = S, ymin = prod_kg_l, ymax = prod_kg_u),
+                 linewidth = 0.2, colour = '#888') +
+  geom_point(aes(x = S, y = prod_null), size = 1, shape = 21, 
+             colour = 'darkred', alpha = 0.2) +
+  
+  geom_point(aes(x = S, y = prod_kg, colour = biogeo, fill = biogeo), 
+             shape = 21, size = 2, alpha = 0.5) +
+  scale_colour_cherulean(palette = 'cheridis', discrete = T) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
+  
+  geom_ribbon(data = spatial_partialpred %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  
+  geom_line(data = spatial_partialpred %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = '#000', linewidth = 0.75) +
+  
+  # geom_ribbon(data = null_partialpred %>% ungroup %>% group_by(S) %>% 
+  #               summarise(lwr = quantile(prod_S, 0.025),
+  #                         upr = quantile(prod_S, 0.975),
+  #                         prod_S = quantile(prod_S, 0.5)), 
+  #             aes(x = S, ymin = lwr, ymax = upr), 
+  #             fill = 'transparent', colour = 'darkred', linetype = 'dashed') +
+  # 
+  # geom_line(data = null_partialpred %>% ungroup %>% group_by(S) %>% 
+  #             summarise(lwr = quantile(prod_S, 0.025),
+  #                       upr = quantile(prod_S, 0.975),
+  #                       prod_S = quantile(prod_S, 0.5)), 
+  #           aes(x = S, y = prod_S), 
+  #           colour = 'darkred', linewidth = 0.75) +
+  
+  scale_x_continuous(breaks = c(1,5,10,50,100,300,500)) + 
+  scale_y_continuous(breaks = c(0,0.001,.01, .1, 1, 10, 50, 100)) +
+  coord_trans(y = "log10", x = 'log10') + style +
+  guides(colour = 'none', fill = 'none')
+f_null
 
 # Spatial single time point model ==================================================================
 
@@ -120,9 +189,8 @@ f_space_S <- ggplot(data = vars_single) +
   labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
   geom_linerange(aes(x = S, ymin = prod_kg_l, ymax = prod_kg_u),
                 linewidth = 0.2, colour = '#888') +
-  # geom_point(aes(x = S, y = prod_null), size = 1, colour = 'darkred') +
   
-  geom_point(aes(x = S, y = prod_kg, colour = biogeo, fill = biogeo), 
+  geom_point(aes(x = S, y = prod_kg, colour = biospatial, fill = biospatial), 
              shape = 21, size = 2, alpha = 0.5) +
   scale_colour_cherulean(palette = 'cheridis', discrete = T) +
   scale_fill_cherulean(palette = 'cheridis', discrete = T) +
@@ -151,7 +219,7 @@ f_space_g <- ggplot(data = vars_single) +
   labs(x = 'Human gravity', y =  bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
   geom_errorbar(aes(x = hgrav2 + 1, ymin = prod_kg_l, ymax = prod_kg_u),
                 linewidth = 0.2, colour = '#666') +
-  geom_point(aes(x = hgrav2 + 1, y = prod_kg, colour = biogeo, fill = biogeo), 
+  geom_point(aes(x = hgrav2 + 1, y = prod_kg, colour = biospatial, fill = biospatial), 
              shape = 21, size = 2, alpha = 0.5) +
   scale_colour_cherulean(palette = 'cheridis', discrete = T) +
   scale_fill_cherulean(palette = 'cheridis', discrete = T) +
@@ -175,6 +243,35 @@ f_space_g <- ggplot(data = vars_single) +
 
 f_space_S/f_space_g
 
+# Biogeographic single time point model ============================================================
+
+## Posterior distributions =========================================================================
+
+f_geo_post1 <- ggplot(geo_draws %>% filter(var_type == 'main')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95) +  
+  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  stat_spike(aes(x = values, y = prettyvar, ), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_geo_post2 <- ggplot(geo_draws %>% filter(var_type == 'randommodel')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95) +  
+  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  stat_spike(aes(x = values, y = prettyvar), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_geo_post <- f_geo_post1 / f_geo_post2 + plot_layout(heights = c(2, 5))
+f_geo_post
+
+## Partial predictions =============================================================================
+
 # split by bioregion
 ggplot(data = vars_single) +
   labs(x = 'log(S)', y = bquote("log Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
@@ -183,23 +280,23 @@ ggplot(data = vars_single) +
   geom_point(aes(x = S, y = prod_kg, colour = biogeo, fill = biogeo), 
              shape = 21, size = 2, alpha = 0.5) +
   
-  geom_ribbon(data = spatial_partialpred %>% ungroup %>% group_by(S) %>% 
+  geom_ribbon(data = geo_partialpred %>% ungroup %>% group_by(biogeo, S) %>% 
                 summarise(lwr = quantile(prod_S, 0.025),
                           upr = quantile(prod_S, 0.975),
                           prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr), 
+              aes(x = S, ymin = lwr, ymax = upr, group = biogeo), 
               fill = 'transparent', colour = '#000', linetype = 'dashed') +
   
-  geom_line(data = spatial_partialpred %>% ungroup %>% group_by(S) %>% 
+  geom_line(data = geo_partialpred %>% ungroup %>% group_by(biogeo, S) %>% 
               summarise(lwr = quantile(prod_S, 0.025),
                         upr = quantile(prod_S, 0.975),
                         prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
+            aes(x = S, y = prod_S, group = biogeo), 
             colour = '#000', linewidth = 0.75) +
 
   scale_colour_cherulean(palette = 'cheridis', discrete = T) +
   scale_fill_cherulean(palette = 'cheridis', discrete = T) +
-  coord_trans(x = 'log10', y = 'log10') +
+  scale_x_log10() + scale_y_log10() +
   guides(colour = 'none', fill = 'none') +
   style + facet_wrap(~biogeo)
 

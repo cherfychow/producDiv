@@ -3,7 +3,7 @@
 # ProducDiv
 # Calculate asymptotic diversity and final prep of diversity predictors
 
-require(iNEXT)
+require(iNEXT.3D)
 require(tidytable)
 require(dplyr)
 require(ggplot2)
@@ -24,33 +24,49 @@ dt_div <- dt_sp %>% select(taxaID, worms_valid) %>%
 # for all the sampling events in each rareID
 # we use timeseries to index by seriesID, so 
 
+samplelink <- dt_rareass %>% ungroup %>% distinct(DataID, seriesID, SamplingEventID, Year) %>% 
+  arrange(DataID, seriesID, Year, SamplingEventID)
+samplelink$sampleID <- paste0('rare_',1:nrow(samplelink))
+dt_rareass <- left_join(dt_rareass, samplelink, by = colnames(samplelink)[-5], relationship = 'many-to-one')
+
 set.seed(24)
 
-for (R in 1:nrow(dt_div)) {
+for (i in 1:n_distinct(dt_rareass$DataID)) { # run per study
   
   # prep data input for iNEXT
   # wide format. rows = species. cols = time/space
-
-  abund <- dt_rareass %>%
-    filter(seriesID == dt_div$seriesID[R]) %>%
-    left_join(., dt_meta[c(1,7)], by = 'DataID') %>% 
-    mutate(Grain = str_extract(`Grain size`, '\\d{2,}') %>% as.numeric) %>% 
-    select(Year, SamplingEventID, Abundance, taxaID, Grain) %>% ungroup %>% 
+  study <- sort(unique(dt_rareass$DataID))[i]
+  abund <- dt_rareass %>% 
+    filter(DataID == study) %>% 
+    mutate(grainsize = dt_meta$`Grain size`[which(dt_meta$DataID == study)] %>% 
+             str_extract(., '\\d{2,}') %>% as.numeric) %>% 
+    select(sampleID, Abundance, taxaID, grainsize) %>% ungroup %>% 
     group_by_at(vars(-Abundance)) %>%
     # collapse length
-    summarise(Abundance = sum(Abundance*Grain) %>% round(., 0)) %>% ungroup # density back to counts
+    summarise(Abundance = sum(Abundance*grainsize) %>% round(., 0)) %>% ungroup # density back to counts
+  
+  abund <- dt_sp %>% select(taxaID, worms_valid) %>% 
+    left_join(abund, ., by = 'taxaID') %>% 
+    select(!c(taxaID, grainsize)) %>% 
+    ungroup %>% 
+    group_by(sampleID, worms_valid) %>% 
+    summarise(Abundance = sum(Abundance))
+  
   
   # wide format
   # drop year. we can match that back from eventID
-  abund <- abund %>% select(!c(Year, Grain)) %>%  
-    tidyr::pivot_wider(names_from = SamplingEventID, values_from = Abundance)
+  abund <- abund %>%
+    tidyr::pivot_wider(names_from = sampleID, values_from = Abundance)
   na <- as.list(rep(0, ncol(abund)-1))
   names(na) <- colnames(abund)[-1]
   abund <- tidyr::replace_na(abund, na)
   
   # calculate asymptotic q0
-  errorhandle <- tryCatch(temp <- iNEXT(x = as.data.frame(abund[-1]), q = 0, datatype = 'abundance', se = T),
-           error = function(e)e)
+  errorhandle <- tryCatch(temp <- iNEXT.3D::estimate3D(diversity = 'TD',
+                                             data = as.data.frame(abund[-1]), 
+                                             q = 0, datatype = 'abundance',
+                                             base = 'coverage'),
+                          error = function(e)e)
   
   # fill in NAs for error fail
   if (inherits(errorhandle, 'error')) {
