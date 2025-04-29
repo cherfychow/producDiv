@@ -40,17 +40,13 @@ for (i in 1:n_distinct(dt_rareass$DataID)) { # run per study
     filter(DataID == study) %>% 
     mutate(grainsize = dt_meta$`Grain size`[which(dt_meta$DataID == study)] %>% 
              str_extract(., '\\d{2,}') %>% as.numeric) %>% 
-    select(sampleID, Abundance, taxaID, grainsize) %>% ungroup %>% 
+    select(sampleID, Abundance, worms_valid, grainsize) %>% ungroup %>% 
     group_by_at(vars(-Abundance)) %>%
     # collapse length
-    summarise(Abundance = sum(Abundance*grainsize) %>% round(., 0)) %>% ungroup # density back to counts
-  
-  abund <- dt_sp %>% select(taxaID, worms_valid) %>% 
-    left_join(abund, ., by = 'taxaID') %>% 
-    select(!c(taxaID, grainsize)) %>% 
-    ungroup %>% 
+    summarise(Abundance = sum(Abundance*grainsize) %>% round(., 0)) %>% ungroup %>%
+    select(!grainsize) %>% 
     group_by(sampleID, worms_valid) %>% 
-    summarise(Abundance = sum(Abundance))
+    summarise(Abundance = sum(Abundance)) %>% ungroup
   
   
   # wide format
@@ -62,52 +58,30 @@ for (i in 1:n_distinct(dt_rareass$DataID)) { # run per study
   abund <- tidyr::replace_na(abund, na)
   
   # calculate asymptotic q0
-  errorhandle <- tryCatch(temp <- iNEXT.3D::estimate3D(diversity = 'TD',
-                                             data = as.data.frame(abund[-1]), 
-                                             q = 0, datatype = 'abundance',
-                                             base = 'coverage'),
+  errorhandle <- tryCatch(temp <- iNEXT3D(diversity = 'TD',
+                                           data = as.data.frame(abund[-1]), 
+                                           q = 0, datatype = 'abundance'),
                           error = function(e)e)
   
   # fill in NAs for error fail
   if (inherits(errorhandle, 'error')) {
-    if (exists('S_asy') == F) {
-      S_asy <- tibble(SamplingEventID = colnames(abund)[-1], 
-                      seriesID = dt_div$seriesID[R],
-                      metric = 'S_asy',
-                      value = NA)
-    } else {
-      S_asy <- tibble(SamplingEventID = colnames(abund)[-1], 
-                      seriesID = dt_div$seriesID[R],
-                      metric = 'S_asy',
-                      value = NA) %>% bind_rows(S_asy, .)
-    }
-    print(paste0('Iteration ', R, ' failed'))
+    print(paste0(study, ' failed'))
     next
   }
   
   # store in a tibble if it worked
   if (exists('S_asy') == F) { # assign new
-    S_asy <- temp$AsyEst %>% filter(Diversity == 'Species richness') %>%
-      select(Estimator, LCL, UCL) %>% 
-      mutate(seriesID = dt_div$seriesID[R], 
-             SamplingEventID = colnames(abund)[-1],
-             metric = 'S_asy') %>%
-      rename(value = Estimator, lwr = LCL, upr = UCL)
+    S_asy <- temp %>% select(!c(Method, Order.q)) %>%
+      rename(qTD_l = qTD.LCL, qTD_u = qTD.UCL)
   } else { # append
-    S_asy <- temp$AsyEst %>% filter(Diversity == 'Species richness') %>%
-      select(Estimator, LCL, UCL) %>% 
-      mutate(seriesID = dt_div$seriesID[R], 
-             SamplingEventID = colnames(abund)[-1],
-             metric = 'S_asy') %>%
-      rename(value = Estimator, lwr = LCL, upr = UCL) %>%
+    S_asy <- temp %>% select(!c(Method, Order.q)) %>%
+      rename(qTD_l = qTD.LCL, qTD_u = qTD.UCL) %>%
       bind_rows(S_asy, .)
   }
-  print(paste0("Iteration ", R, ' of ', nrow(dt_div), ' done'))
-  
-  save(S_asy, file = 'expS.RData')
+  print(paste0("Study ", study, ' of ', n_distinct(dt_rareass$DataID), ' done'))
 }
 
-rm(abund, temp, na, rare_id, R, errorhandle)
+rm(abund, temp, na, i, errorhandle)
 str(S_asy)
 summary(S_asy)
 

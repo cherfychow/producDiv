@@ -233,7 +233,7 @@ dt_prodDB <- dt_prodDB %>% mutate(
 )
 # make db match
 
-samplelink <- prodtrait %>% select(ends_with('ID'), Species, sstmean)
+samplelink <- prodtrait %>% select(ends_with('ID'), Species, sstmean) %>% distinct
 prodtrait <- prodtrait %>% distinct(pick(Species:sstmean))
 
 ## Kmax, growth coef ============================================================
@@ -278,8 +278,8 @@ temp <- predK(traits = prodtrait,
               dataset = dt_prodDB, fmod = growthf, params = pars, niter = 1000, 
               lowq = 0.025, uppq = 0.975, verbose = T, return = 'pred')
 
-prod_single <- samplelink %>% distinct(taxaID, DataID, seriesID, SamplingEventID, Species, .keep_all = T) %>% 
-  left_join(., temp$pred, by = c('Species', 'sstmean'))
+prod_single <- samplelink %>% distinct(DataID, seriesID, SamplingEventID, Species, .keep_all = T) %>% 
+  left_join(., distinct(temp$pred), by = colnames(samplelink))
 
 
 ## Gross somatic gain =============================================================================
@@ -287,8 +287,8 @@ prod_single <- samplelink %>% distinct(taxaID, DataID, seriesID, SamplingEventID
 # Kmax is estimated per species but now integrate with individual length records
 
 dt_prod_single <- dt_single %>% 
-  select(DataID, seriesID, taxaID, SamplingEventID, Abundance, Length, Length_lwr, Length_upr)
-dt_prod_single <- left_join(dt_prod_single, prod_single, by = c('taxaID', 'DataID', 'seriesID', 'SamplingEventID'), 
+  select(DataID, seriesID, taxaID, fishbase_valid, SamplingEventID, Abundance, Length, Length_lwr, Length_upr)
+dt_prod_single <- left_join(dt_prod_single, prod_single, by = c('DataID', 'seriesID', 'SamplingEventID', 'fishbase_valid' = 'Species'), 
                             na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
   select(!c(Diet, Position))
 summary(dt_prod_single)

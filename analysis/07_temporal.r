@@ -104,6 +104,22 @@ rm(tempS, tempdata, temppred)
 summary(vars_time)
 
 
+## ∆N ==============================================================================================
+
+temp <- dt_rareass %>% group_by(DataID, seriesID, Year, SamplingEventID) %>% 
+  summarise(totalN = sum(Abundance)) %>% ungroup %>%
+  group_by(DataID, seriesID, Year) %>% 
+  summarise(totalN = mean(totalN))
+
+vars_time <- left_join(vars_time, temp, by = c('DataID', 'seriesID', 'Year'))
+
+vars_time$delta_N <- NA
+for (i in which(vars_time$Year_rel != 1)) {
+  vars_time$delta_N[i] <- vars_time$totalN[i] - vars_time$totalN[i-1]
+}
+
+
+
 # LARGE SCALE TRAJECTORY ===========================================================================
 
 # whole time series trajectory of productivity and diversity
@@ -120,15 +136,15 @@ vars_time_long$S_se <- NA
 vars_time_long$prod_slope <- NA
 vars_time_long$prod_se <- NA
 
-for (i in which(is.na(vars_time_long$S_se))) {
-  set.seed(24)
-  tempdata <- vars_rare %>% ungroup %>% 
-    filter(DataID == vars_time_long$DataID[i],
-           seriesID == vars_time_long$seriesID[i]) %>% 
-    select(Year_rel, prod_kg_yr, S)
-  
-  mod_prodt[[i]] <- glm(data = tempdata, prod_kg_yr ~ Year_rel, family = Gamma(link = 'log'))
-  mod_St[[i]] <- glm(data = tempdata, S ~ Year_rel, family = quasipoisson(link = 'log'))
+for (i in 1:nrow(vars_time_long)) {
+  # set.seed(24)
+  # tempdata <- vars_rare %>% ungroup %>% 
+  #   filter(DataID == vars_time_long$DataID[i],
+  #          seriesID == vars_time_long$seriesID[i]) %>% 
+  #   select(Year_rel, prod_kg_yr, S)
+  # 
+  # mod_prodt[[i]] <- glm(data = tempdata, prod_kg_yr ~ Year_rel, family = Gamma(link = 'log'))
+  # mod_St[[i]] <- glm(data = tempdata, S ~ Year_rel, family = quasipoisson(link = 'log'))
   
   # store coefficients
   vars_time_long$S_slope[i] <- coefficients(mod_St[[i]])[2] # slope
@@ -152,3 +168,40 @@ vars_time <- dt_rareass %>% distinct(seriesID, gridcell) %>%
 vars_time_long <- dt_rareass %>% distinct(seriesID, gridcell) %>% 
   left_join(vars_time_long, ., by = 'seriesID') %>% 
   left_join(., st_drop_geometry(grid_sf), by = 'gridcell')
+
+vars_time_long <- vars_time_long %>% ungroup %>% select(!Year) %>% distinct
+
+## ∆SST ============================================================================================
+dt_sst_t <- dt_rareass %>% select(DataID, seriesID, SamplingEventID, gridcell, Year, Month, date_res) %>% 
+  left_join(., dt_sst, by = colnames(dt_sst)[-4])
+
+vars_time_long$sst_slope <- NA
+vars_time_long$sst_se <- NA
+mod_sst <- as.list(rep(NA, nrow(vars_time_long)))
+
+for (i in 1:nrow(vars_time_long)) {
+  
+  # temp <- dt_sst_t %>% 
+  #   filter(DataID == vars_time_long$DataID[i], seriesID == vars_time_long$seriesID[i])
+  # 
+  # mod_sst[[i]] <- glm(data = temp, sst ~ Year, family = Gamma(link = 'log'))
+  
+  # store coefficients
+  vars_time_long$sst_slope[i] <- coefficients(mod_sst[[i]])[2] # slope
+  vars_time_long$sst_se[i] <- summary(mod_sst[[i]])$coefficients[2,2] # slope std error
+  print(paste0('Time series ', i, ' complete of ', nrow(vars_time_long)))
+  
+}
+
+# adjacent year sst
+vars_time <- dt_sst_t %>% select(!c(Month, date_res, SamplingEventID)) %>% 
+  distinct %>% 
+  left_join(vars_time, ., by = c('DataID', 'seriesID', 'gridcell', 'Year'))
+vars_time$delta_sst <- NA
+
+# only observed richness for now because productivity has upper and lowers
+# the single sample ones don't need modelling
+for (i in which(vars_time$Year_rel != 1)) {
+  # ignore timepoint 1 because it doesn't have a t-1
+  vars_time$delta_sst[i] <- vars_time$sst[i] - vars_time$sst[i-1]
+}
