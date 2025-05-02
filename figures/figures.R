@@ -7,6 +7,7 @@ require(patchwork)
 require(sf)
 require(rnaturalearth)
 require(ggdist)
+require(ggpattern)
 
 # colour palettes
 source('https://gist.githubusercontent.com/cherfychow/e9ae890fd16f4c86730748c067feee2b/raw/b2db138ab8164c237129308ea643de78cd54b252/cherulean.R')
@@ -403,16 +404,6 @@ f_T_post
 
 ## Partial prediction plot =========================================================================
 
-vars_time_long <- vars_time_long %>% 
-  mutate(quad = case_when(.default = 'neg',
-                          S_slope > 0 & prod_slope > 0 ~ 'pos',
-                          S_slope <= 0 & prod_slope <= 0 ~ 'pos')) %>% 
-  mutate(quad = case_when(.default = quad,
-                          S_slope > 0 & prod_slope > 0 & S_slope - 1.96*S_se > 0 & prod_slope - 1.96*prod_se > 0 ~ 'pos_certain',
-                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0  ~ 'pos_certain',
-                          S_slope > 0 & S_slope - 1.96*S_se > 0 &  prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0 ~ 'neg_certain',
-                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope > 0 & prod_slope - 1.96*prod_se > 0 ~ 'neg_certain'))
-
 f_T_S1 <- ggplot(data = vars_time_long) +
   labs(x = "∆S", y = bquote("∆Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#AAA') +
@@ -499,17 +490,17 @@ f_t_post1 <- ggplot() +
   stat_slab(data = t_draws %>% filter(var_type == 'fixed'),
             aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = 'darkgreen', na.value = 'grey90') +
   stat_spike(data = t_draws %>% filter(var_type == 'fixed'),
              aes(x = values, y = prettyvar, ), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
+             normalize = 'groups', size = 0, colour = 'darkgreen') +
   # full time series
   stat_slab(data = T_draws %>% filter(var_type == 'fixed'),
             aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
   stat_spike(data = T_draws %>% filter(var_type == 'fixed'),
              aes(x = values, y = prettyvar, ), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
+             normalize = 'groups', size = 0, colour = '#000') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
   labs(x = NULL, y = NULL) + style +
   guides(fill = 'none')
@@ -518,10 +509,10 @@ f_t_post2 <- ggplot() +
   stat_slab(data = t_draws %>% filter(var_type == 'randommodel'),
             aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = 'darkgreen', na.value = 'grey90') +
   stat_spike(data = t_draws %>% filter(var_type == 'randommodel'),
              aes(x = values, y = prettyvar), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
+             normalize = 'groups', size = 0, colour = 'darkgreen') +
   
   # full time series
   stat_slab(data = T_draws %>% filter(var_type == 'randommodel'),
@@ -529,25 +520,17 @@ f_t_post2 <- ggplot() +
             normalize = 'groups', .width = .95) +  
   stat_spike(data = T_draws %>% filter(var_type == 'randommodel'),
              aes(x = values, y = prettyvar, ), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
+             normalize = 'groups', size = 0, colour = '#000') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
   labs(x = NULL, y = NULL) + style +
   guides(fill = 'none')
 
 f_t_post <- f_t_post1 / f_t_post2 + plot_layout(heights = c(1,2))
+f_t_post
 
 
 ## Partial prediction plot =========================================================================
-# 
-# vars_time <- vars_time %>% 
-#   mutate(quad = case_when(.default = 'neg',
-#                           logratio1_S > 0 & logratio1_prod > 0 ~ 'pos',
-#                           logratio1_S <= 0 & logratio1_prod <= 0 ~ 'pos')) %>% 
-#   mutate(quad = case_when(.default = quad,
-#                           logratio1_S > 0 & logratio1_prod > 0 & logratio1_S_l > 0 & logratio1_prod_l > 0 ~ 'pos_certain',
-#                           logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod <= 0 & logratio1_prod_u <= 0  ~ 'pos_certain',
-#                           logratio1_S > 0 & logratio1_S_l > 0 &  logratio1_prod <= 0 & logratio1_prod_u <= 0 ~ 'neg_certain',
-#                           logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod > 0 & logratio1_prod_l > 0 ~ 'neg_certain'))
+ 
 
 f_t_S1 <- ggplot(data = vars_time) +
   labs(x = bquote("∆log"[2]~"S"), y = bquote("∆log"[2]~"Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
@@ -615,13 +598,7 @@ f_t_g <- ggplot(data = vars_time) +
   scale_x_log10() + style
 f_t_g
 
-# proportions in positive-negative for long and short term fluxes
-
-dt_tchange <- vars_time_long %>% group_by(quad) %>% 
-  summarise(n = n()) %>% mutate(group = 'full')
-dt_tchange <- vars_time %>% group_by(quad) %>% 
-  summarise(n = n()) %>% mutate(group = 'adjacent') %>% 
-  bind_rows(dt_tchange, .)
+# Change trajectory bars ============================================================================
 
 ggplot(data = dt_tchange) +
   geom_col(aes(y = n, fill = quad, x = group), position = 'fill') + 
@@ -630,6 +607,23 @@ ggplot(data = dt_tchange) +
   theme_minimal() + labs(x = NULL, y = NULL) +
   guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
   theme(panel.grid = element_blank(), legend.position = 'bottom')
+
+
+f_deltaS <- ggplot(data = dt_temp %>% filter(metric == 'S')) +
+  geom_col_pattern(aes(y = group, x = n, fill = direction, pattern = delta_certain), 
+           colour = 'black', position = 'fill') + style +
+  labs(x = NULL, y = NULL) +
+  scale_pattern_discrete(choices = c('circle', 'stripe'), labels = c('NA', 'certain')) +
+  scale_fill_manual(values = c('#888', '#CCC', '#FFF'), labels = c('decreasing', 'increasing', 'no change'))
+
+f_deltaP <- ggplot(data = dt_temp %>% filter(metric == 'Prod')) +
+  geom_col_pattern(aes(y = group, x = n, fill = direction, pattern = delta_certain), 
+                   colour = 'black', position = 'fill') + style +
+  labs(x = NULL, y = NULL) +
+  scale_pattern_discrete(choices = c('circle', 'stripe'), labels = c('NA', 'certain')) +
+  scale_fill_manual(values = c('#888', '#CCC', '#FFF'), labels = c('decreasing', 'increasing', 'no change'))
+
+f_deltaS / f_deltaP + plot_layout(guides = 'collect')
 
 # Spatiotemporal figure ============================================================================
 

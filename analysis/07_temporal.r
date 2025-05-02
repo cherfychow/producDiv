@@ -205,3 +205,95 @@ for (i in which(vars_time$Year_rel != 1)) {
   # ignore timepoint 1 because it doesn't have a t-1
   vars_time$delta_sst[i] <- vars_time$sst[i] - vars_time$sst[i-1]
 }
+
+
+# CATEGORISE TEMPORAL TRENDS =======================================================================
+
+vars_time <- vars_time %>% 
+  mutate(delta_certain = case_when(.default = 0,
+                                   is.na(logratio1_S) ~ NA,
+                                   logratio1_S < 0 & logratio1_S_u < 0 ~ 1,
+                                   logratio1_prod < 0 & logratio1_prod_u < 0  ~ 1,
+                                   logratio1_S > 0 & logratio1_S_l > 0 ~ 1,
+                                   logratio1_prod > 0 & logratio1_prod_l > 0  ~ 1
+  ),
+  Sdir = case_when(.default = NA, logratio1_S > 0 ~ 'inc',
+                   logratio1_S < 0 ~ 'dec',
+                   logratio1_S == 0 ~ 'zero'),
+  Pdir = case_when(.default = NA,
+                   logratio1_prod > 0 ~ 'inc',
+                   logratio1_prod < 0 ~ 'dec',
+                   logratio1_prod == 0 ~ 'zero'))
+
+vars_time_long <- vars_time_long %>% 
+  mutate(delta_certain = case_when(.default = 0,
+                                   is.na(S_slope) ~ NA,
+                                   S_slope > 0 & S_slope - 1.96*S_se > 0 ~ 1,
+                                   S_slope < 0 & S_slope + 1.96*S_se < 0 ~ 1,
+                                   prod_slope > 0 & prod_slope - 1.96*prod_se > 0 ~ 1,
+                                   prod_slope < 0 & prod_slope + 1.96*prod_se < 0 ~ 1
+  ),
+  Sdir = case_when(.default = NA, S_slope > 0 ~ 'inc',
+                   S_slope < 0 ~ 'dec',
+                   S_slope == 0 ~ 'zero'),
+  Pdir = case_when(.default = NA,
+                   prod_slope > 0 ~ 'inc',
+                   prod_slope < 0 ~ 'dec',
+                   prod_slope == 0 ~ 'zero'))
+
+dt_temp <- vars_time_long %>% 
+  group_by(Sdir, delta_certain) %>% 
+  summarise(n = n()) %>% mutate(group = 'full', metric = 'S') %>% 
+  rename(direction = Sdir)
+
+dt_temp <- vars_time_long %>% 
+  group_by(Pdir, delta_certain) %>% 
+  summarise(n = n()) %>% mutate(group = 'full', metric = 'Prod') %>% 
+  rename(direction = Pdir) %>% 
+  bind_rows(dt_temp, .)
+
+dt_temp <- vars_time %>% 
+  filter(!is.na(logratio1_prod)) %>% 
+  group_by(Sdir, delta_certain) %>% 
+  summarise(n = n()) %>% mutate(group = 'adjacent', metric = 'S') %>% 
+  rename(direction = Sdir) %>% 
+  bind_rows(dt_temp, .)
+
+dt_temp <- vars_time %>% 
+  filter(!is.na(logratio1_prod)) %>% 
+  group_by(Pdir, delta_certain) %>% 
+  summarise(n = n()) %>% mutate(group = 'adjacent', metric = 'Prod') %>% 
+  rename(direction = Pdir) %>% 
+  bind_rows(dt_temp, .)
+
+dt_temp$delta_certain <- as.factor(dt_temp$delta_certain)
+
+# CATEGORISE TREND PAIRS (parallel/opposite) =======================================================
+
+vars_time <- vars_time %>%
+  mutate(quad = case_when(.default = 'neg',
+                          logratio1_S > 0 & logratio1_prod > 0 ~ 'pos',
+                          logratio1_S <= 0 & logratio1_prod <= 0 ~ 'pos')) %>%
+  mutate(quad = case_when(.default = quad,
+                          logratio1_S > 0 & logratio1_prod > 0 & logratio1_S_l > 0 & logratio1_prod_l > 0 ~ 'pos_certain',
+                          logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod <= 0 & logratio1_prod_u <= 0  ~ 'pos_certain',
+                          logratio1_S > 0 & logratio1_S_l > 0 &  logratio1_prod <= 0 & logratio1_prod_u <= 0 ~ 'neg_certain',
+                          logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod > 0 & logratio1_prod_l > 0 ~ 'neg_certain'))
+
+vars_time_long <- vars_time_long %>% 
+  mutate(quad = case_when(.default = 'neg',
+                          S_slope > 0 & prod_slope > 0 ~ 'pos',
+                          S_slope <= 0 & prod_slope <= 0 ~ 'pos')) %>% 
+  mutate(quad = case_when(.default = quad,
+                          S_slope > 0 & prod_slope > 0 & S_slope - 1.96*S_se > 0 & prod_slope - 1.96*prod_se > 0 ~ 'pos_certain',
+                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0  ~ 'pos_certain',
+                          S_slope > 0 & S_slope - 1.96*S_se > 0 &  prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0 ~ 'neg_certain',
+                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope > 0 & prod_slope - 1.96*prod_se > 0 ~ 'neg_certain'))
+
+# proportions in positive-negative for long and short term fluxes
+
+dt_tchange <- vars_time_long %>% group_by(quad) %>% 
+  summarise(n = n()) %>% mutate(group = 'full')
+dt_tchange <- vars_time %>% group_by(quad) %>% 
+  summarise(n = n()) %>% mutate(group = 'adjacent') %>% 
+  bind_rows(dt_tchange, .)
