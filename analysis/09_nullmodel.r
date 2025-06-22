@@ -45,7 +45,7 @@ summary(dt_prod_null)
 
 dt_prod_null <- dt_prod_null %>% select(!c(sstmean:b))
 
-## Apply to assemblage data ========================================================================
+## Apply to assemblage data 
 
 # scale by abundance
 dt_prod_null <- dt_prod_null %>% 
@@ -89,7 +89,7 @@ mod_null <- brm(data = dt_null,
                    prior = null_priors, iter = 5000)
 
 
-## POSTERIORS PREDICtIONS ==========================================================================
+## POSTERIORS PREDICtIONS 
 
 # get posterior draws
 null_draws <- tidy_draws(mod_null) %>% 
@@ -136,9 +136,33 @@ mod_nullP2 <- brm(data = dt_null,
                 family = Gamma(link = 'log'),
                 prior = nullP2_priors, iter = 5000)
 
+# Model posteriors + predictions
+nullP2_draws <- tidy_draws(mod_nullP2) %>% 
+  select(starts_with(c('b', 'sd', '.')), shape) %>% 
+  tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
+
+nullP2_draws <- nullP2_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+                                                         .default = 'randommodel'),
+                                    prettyvar = case_when(vars == 'b_logS' ~ 'S',
+                                                          vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                          vars == 'sd_DataID__Intercept' ~ '(1|study)',
+                                                          vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                                                          vars == 'b_Intercept' ~ 'β0',
+                                                          .default = vars))
+
+# model partial predictions
+newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
+                               max(vars_single$S, na.rm = T)) %>% floor(),
+                     hgrav2 = runif(500, min(vars_single$hgrav2), max(vars_single$hgrav2)))
+
+# partial effect of ∆S
+nullP2_partialpred <- newdata %>% mutate(hgrav2 = mean(vars_single$hgrav2)) %>% 
+  epred_draws(mod_nullP2, re_formula = NA, newdata = ., value = 'prod0_nullP2') %>% ungroup %>% 
+  select(!hgrav2)
+
 # NULL SPECIES =====================================================================================
 
-## Prep predictors =================================================================================
+# Prep predictors 
 dt_sp_null <- left_join(dt_single, dt_traits[c(1,3:5)], by = 'taxaID') %>% 
   filter(!is.na(MaxSizeTL)) %>% 
   select(DataID, seriesID, SamplingEventID, Abundance, Length, a, b, MaxSizeTL) %>% 
@@ -172,7 +196,7 @@ dt_sp_null <- dt_meta %>% distinct(DataID, `Grain size`) %>%
 dt_null <- dt_sp_null %>% ungroup %>% 
   left_join(dt_null, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
 
-## species null model===============================================================================
+# species null model
 
 # weakly informative priors
 nullsp1_priors <- default_prior(prod_maxsp ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
@@ -198,7 +222,7 @@ mod_nullsp2 <- brm(data = vars_single,
                    family = Gamma(link = 'log'),
                    prior = nullsp2_priors, iter = 5000)
 
-## Model draws and predictions =====================================================================
+# Model draws and predictions
 
 # get posterior draws
 nullsp1_draws <- tidy_draws(mod_nullsp1) %>% 
@@ -265,6 +289,10 @@ rm(newdata)
 
 # NULL ABUNDANCE ===================================================================================
 
+# total N
+N <- dt_single %>% select(DataID, seriesID, SamplingEventID, Abundance) %>% 
+  group_by(DataID, seriesID, SamplingEventID) %>% summarise(totalN = sum(Abundance))
+
 # all abundance = 1
 
 dt_abund0 <- dt_single %>% 
@@ -309,14 +337,11 @@ summary(dt_abund0)
 # unit conversion
 dt_abund0 <- dt_abund0 %>% mutate(across(starts_with('prod0'), ~ .x * 10000 / Area))
 
-# just add it onto vars_single
 dt_null <- dt_abund0 %>% select(!Area) %>% 
   left_join(dt_null, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
 
-## Fit model =======================================================================================
+## Fit model 
 
-require(brms)
-load('dt_null.RData')
 abund0_priors <- default_prior(prod0_Amin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell:DataID),
                                data = dt_null, family = Gamma(link = 'log'))
 abund0_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
@@ -327,4 +352,28 @@ mod_abund0 <- brm(data = dt_null,
                   formula = prod0_Amin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell:DataID),
                   family = Gamma(link = 'log'),
                   prior = abund0_priors, iter = 5000)
-save(mod_abund0, file = 'mod_null_A.RData')
+# save(mod_abund0, file = 'mod_null_A.RData')
+
+# posteriors and predictions
+
+abund0_draws <- tidy_draws(mod_abund0) %>% 
+  select(starts_with(c('b', 'sd', '.')), shape) %>% 
+  tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
+
+abund0_draws <- abund0_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+                                                               .default = 'randommodel'),
+                                          prettyvar = case_when(vars == 'b_logS' ~ 'S',
+                                                                vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                                vars == 'sd_DataID__Intercept' ~ '(1|study)',
+                                                                vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                                                                vars == 'b_Intercept' ~ 'β0',
+                                                                .default = vars))
+
+# model partial predictions
+newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
+                               max(vars_single$S, na.rm = T)) %>% floor(),
+                     hgrav2 = mean(vars_single$hgrav2))
+
+# partial effect of ∆S
+abund0_partial <- epred_draws(mod_abund0, re_formula = NA, newdata = newdata, value = 'prod_S') %>% ungroup %>% 
+  select(!hgrav2)

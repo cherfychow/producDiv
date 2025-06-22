@@ -16,7 +16,7 @@ require(readr)
 
 # need to keep some sampling info since SST are specific to location + time
 dt_rareass <- dt_sp %>% select(taxaID, ends_with('valid'), taxon_resolution) %>% 
-  left_join(dt_assemblage, ., by = "taxaID") # join in
+  left_join(dt_rareass, ., by = "taxaID") # join in
 summary(dt_rareass)
 
 # traits
