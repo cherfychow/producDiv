@@ -40,7 +40,7 @@ vars_rare <- dt_rareass %>%
   left_join(., dt_div, by = colnames(dt_div)[-5])
 
 # productivity
-vars_rare <- dt_prod_rare %>% select(ends_with('ID'), starts_with('prod_kg')) %>% 
+vars_rare <- dt_prod_all %>% select(ends_with('ID'), starts_with('prod_kg')) %>% 
   left_join(vars_rare, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
 
 vars_rare <- left_join(vars_rare, st_drop_geometry(grid_sf), by = 'gridcell')
@@ -53,15 +53,12 @@ vars_single <- dt_single %>%
   left_join(., dt_div_single, by = c('SamplingEventID', 'DataID', 'seriesID'))
 
 # productivity
-vars_single <- dt_prod_single %>% select(DataID, seriesID, SamplingEventID, starts_with('prod_kg')) %>% 
-  left_join(vars_single, ., by = c('DataID', 'seriesID', 'SamplingEventID'), relationship = 'one-to-one')
+vars_single <- dt_prod_all %>% select(DataID, seriesID, SamplingEventID, starts_with('prod_kg')) %>% 
+  left_join(vars_single, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
 
 # human gravity
 vars_single <- left_join(vars_single, st_drop_geometry(grid_sf), by = 'gridcell')
 
 vars_rare <- vars_rare %>% ungroup
 vars_single <- vars_single %>% ungroup
-
-
-# Match MPA status =================================================================================
 

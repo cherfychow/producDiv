@@ -54,7 +54,7 @@ for (i in which(vars_time$Year_rel != 1)) {
   vars_time$logratio1_prod[i] <- log2(temppred$fit[2]/temppred$fit[1])
   vars_time$logratio1_prod_l[i] <- log2(temppred$fit[2] - (1.96*temppred$se.fit[2])) - log2(temppred$fit[1] - (1.96*temppred$se.fit[1]))
   vars_time$logratio1_prod_u[i] <- log2(temppred$fit[2] + (1.96*temppred$se.fit[2])) - log2(temppred$fit[1] + (1.96*temppred$se.fit[1]))
-  print(paste0('Time series ', i, ' complete of 14478'))
+  print(paste0('Time series ', i, ' complete of 15115'))
 } 
 
 rm(tempdata, years, tempP, temppred)
@@ -256,24 +256,24 @@ dt_temp$delta_certain <- as.factor(dt_temp$delta_certain)
 # CATEGORISE TREND PAIRS (parallel/opposite) =======================================================
 
 vars_time <- vars_time %>%
-  mutate(quad = case_when(.default = 'neg',
-                          logratio1_S > 0 & logratio1_prod > 0 ~ 'pos',
-                          logratio1_S <= 0 & logratio1_prod <= 0 ~ 'pos')) %>%
+  mutate(quad = case_when(.default = 'opp',
+                          logratio1_S > 0 & logratio1_prod > 0 ~ 'par',
+                          logratio1_S <= 0 & logratio1_prod <= 0 ~ 'par')) %>%
   mutate(quad = case_when(.default = quad,
-                          logratio1_S > 0 & logratio1_prod > 0 & logratio1_S_l > 0 & logratio1_prod_l > 0 ~ 'pos_certain',
-                          logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod <= 0 & logratio1_prod_u <= 0  ~ 'pos_certain',
-                          logratio1_S > 0 & logratio1_S_l > 0 &  logratio1_prod <= 0 & logratio1_prod_u <= 0 ~ 'neg_certain',
-                          logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod > 0 & logratio1_prod_l > 0 ~ 'neg_certain'))
+                          logratio1_S > 0 & logratio1_prod > 0 & logratio1_S_l > 0 & logratio1_prod_l > 0 ~ 'par_certain',
+                          logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod <= 0 & logratio1_prod_u <= 0  ~ 'par_certain',
+                          logratio1_S > 0 & logratio1_S_l > 0 &  logratio1_prod <= 0 & logratio1_prod_u <= 0 ~ 'opp_certain',
+                          logratio1_S <= 0 & logratio1_S_u <= 0 & logratio1_prod > 0 & logratio1_prod_l > 0 ~ 'opp_certain'))
 
 vars_time_long <- vars_time_long %>% 
-  mutate(quad = case_when(.default = 'neg',
-                          S_slope > 0 & prod_slope > 0 ~ 'pos',
-                          S_slope <= 0 & prod_slope <= 0 ~ 'pos')) %>% 
+  mutate(quad = case_when(.default = 'opp',
+                          S_slope > 0 & prod_slope > 0 ~ 'par',
+                          S_slope <= 0 & prod_slope <= 0 ~ 'par')) %>% 
   mutate(quad = case_when(.default = quad,
-                          S_slope > 0 & prod_slope > 0 & S_slope - 1.96*S_se > 0 & prod_slope - 1.96*prod_se > 0 ~ 'pos_certain',
-                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0  ~ 'pos_certain',
-                          S_slope > 0 & S_slope - 1.96*S_se > 0 &  prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0 ~ 'neg_certain',
-                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope > 0 & prod_slope - 1.96*prod_se > 0 ~ 'neg_certain'))
+                          S_slope > 0 & prod_slope > 0 & S_slope - 1.96*S_se > 0 & prod_slope - 1.96*prod_se > 0 ~ 'par_certain',
+                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0  ~ 'par_certain',
+                          S_slope > 0 & S_slope - 1.96*S_se > 0 &  prod_slope <= 0 & prod_slope + 1.96*prod_se <= 0 ~ 'opp_certain',
+                          S_slope <= 0 & S_slope + 1.96*S_se <= 0 & prod_slope > 0 & prod_slope - 1.96*prod_se > 0 ~ 'opp_certain'))
 
 # proportions in positive-negative for long and short term fluxes
 
@@ -282,6 +282,8 @@ dt_tchange <- vars_time_long %>% group_by(quad) %>%
 dt_tchange <- vars_time %>% group_by(quad) %>% 
   summarise(n = n()) %>% mutate(group = 'adjacent') %>% 
   bind_rows(dt_tchange, .)
+
+dt_tchange <- dt_tchange %>% group_by(group) %>% mutate(total = sum(n), propn = n/total)
 
 
 tempfirst <- vars_rare %>% filter(Year_rel == 1) %>% ungroup %>% group_by(DataID, seriesID) %>% 
@@ -292,3 +294,4 @@ vars_time2 <- vars_rare %>% ungroup %>% group_by(DataID, seriesID) %>%
 vars_time2 <- vars_time_long %>% distinct(DataID, seriesID, quad, delta_certain) %>% 
   left_join(vars_time2, ., by = c('DataID', 'seriesID')) %>% mutate(quad = str_remove(quad, '\\_certain'))
 rm(tempfirst)
+
