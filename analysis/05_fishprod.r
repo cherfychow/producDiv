@@ -125,10 +125,10 @@ dt_vbgf <- dt_vbgf %>% select(!ID)
 
 # Kmax is estimated per species but now integrate with individual length records
 
-dt_prod_rare <- dt_rareass %>% 
+dt_prod_rare <- dt_rareass %>% ungroup %>% 
   select(ID, DataID, seriesID, taxaID, SamplingEventID, Abundance, Length, Length_lwr, Length_upr)
 dt_prod_rare <- left_join(dt_prod_rare, dt_vbgf, by = c('taxaID', 'DataID', 'seriesID', 'SamplingEventID'), 
-                     na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
+                     na_matches = 'na', relationship = 'many-to-one') %>% 
   select(!c(Diet, Position, Method))
 summary(dt_prod_rare)
 # the NAs are from species that didn't qualify for trait/prod
@@ -158,14 +158,16 @@ dt_prod_rare <- dt_prod_rare %>% select(!c(Species:sstmean))
 ## Apply to assemblage data =====================================================
 
 # scale by abundance
-dt_prod_rare <- dt_prod_rare %>% 
+dt_prod_rare <- dt_prod_rare %>% ungroup %>% 
   mutate(across(starts_with('biomass_gain'), ~ Abundance * .x)) %>% 
   select(!Abundance)
 
 # aggregate to sampling event level
 dt_prod_rare <- dt_prod_rare %>% ungroup %>% 
   group_by(DataID, seriesID, SamplingEventID) %>% 
-  summarise(across(starts_with('biomass_gain'), ~ sum(.x))) %>% ungroup
+  summarise(biomass_gain = sum(biomass_gain),
+            biomass_gain_l = sum(biomass_gain_l),
+            biomass_gain_u = sum(biomass_gain_u)) %>% ungroup
 summary(dt_prod_rare)
 
 # convert to kg/yr
@@ -287,9 +289,11 @@ prod_single <- samplelink %>% distinct(DataID, seriesID, SamplingEventID, Specie
 # Kmax is estimated per species but now integrate with individual length records
 
 dt_prod_single <- dt_single %>% 
-  select(DataID, seriesID, taxaID, fishbase_valid, SamplingEventID, Abundance, Length, Length_lwr, Length_upr)
-dt_prod_single <- left_join(dt_prod_single, prod_single, by = c('DataID', 'seriesID', 'SamplingEventID', 'fishbase_valid' = 'Species'), 
-                            na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
+  select(DataID, seriesID, taxaID, fishbase_valid, SamplingEventID, Abundance, Length, Length_lwr, Length_upr, gridcell, Year, Month)
+nrow(dt_prod_single)
+# prod_single <- prod_single %>% select(!taxaID) %>% ungroup %>% distinct(Species, gridcell, Year, Month, .keep_all = T)
+dt_prod_single <- left_join(dt_prod_single, prod_single, by = c('fishbase_valid' = 'Species', 'gridcell', 'Year', 'Month'), 
+            na_matches = 'na') %>% 
   select(!c(Diet, Position))
 summary(dt_prod_single)
 # View(dt_prod %>% filter(is.na(Kmax))) # the NAs are from species that didn't qualify for trait/prod
@@ -309,12 +313,6 @@ dt_prod_single <- dt_prod_single %>%
   )
 
 summary(dt_prod_single)
-
-# dt_prod %>% filter(delta_g_day > 10) %>% View # make sure the large increases are proportional
-# dt_prod %>% filter(delta_g_day < 0) %>% View
-# don't need to keep traits
-dt_prod_single <- dt_prod_single %>% select(!c(Species:sstmean))
-
 
 ## Apply to assemblage data =====================================================
 
@@ -345,4 +343,5 @@ dt_prod_single <- dt_meta %>% distinct(DataID, `Grain size`) %>%
 summary(dt_prod_single)
 # unit conversion
 dt_prod_single <- dt_prod_single %>% mutate(across(starts_with('prod'), ~ .x * 10000 / Area))
+
 

@@ -282,3 +282,13 @@ dt_tchange <- vars_time_long %>% group_by(quad) %>%
 dt_tchange <- vars_time %>% group_by(quad) %>% 
   summarise(n = n()) %>% mutate(group = 'adjacent') %>% 
   bind_rows(dt_tchange, .)
+
+
+tempfirst <- vars_rare %>% filter(Year_rel == 1) %>% ungroup %>% group_by(DataID, seriesID) %>% 
+  mutate(S1 = mean(S), P1 = mean(prod_kg)) %>% select(DataID, seriesID, S1, P1)
+vars_time2 <- vars_rare %>% ungroup %>% group_by(DataID, seriesID) %>% 
+  summarise(meanS = mean(S), meanP = mean(prod_kg)) %>% 
+  left_join(., tempfirst, by = c('DataID', 'seriesID'))
+vars_time2 <- vars_time_long %>% distinct(DataID, seriesID, quad, delta_certain) %>% 
+  left_join(vars_time2, ., by = c('DataID', 'seriesID')) %>% mutate(quad = str_remove(quad, '\\_certain'))
+rm(tempfirst)
