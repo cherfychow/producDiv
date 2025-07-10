@@ -91,7 +91,7 @@ pred_spatial <- vars_single %>% distinct(S) %>%
 spatial_resid <- vars_single %>% select(S, prod_kg)
 spatial_resid <- pred_spatial %>% group_by(S) %>% summarise(prod_S = median(prod_S)) %>% 
   left_join(spatial_resid, ., by = 'S') %>% distinct
-spatial_resid <- spatial_resid %>% mutate(resid = prod_S - prod_kg)
+spatial_resid <- spatial_resid %>% mutate(resid = prod_kg - prod_S)
 
 # SPATIAL BIOGEO ALT with N ========================================================================
 # with abundance included
@@ -161,9 +161,6 @@ pred_time_full <- newdata %>%
 
 # Alternate temporal model: with N + SST ===========================================================
 
-require(brms)
-load('model_vars.RData')
-
 pr_timeN <- default_prior(prod_slope ~ S_slope + sst_slope + N_slope + log(hgravity + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                              data = vars_time_long, family = gaussian())
 pr_timeN
@@ -176,7 +173,24 @@ m_timeN <- brm(data = vars_time_long,
                   prior = pr_timeN, iter = 8000)
 save(m_timeN, file = 'm_timeN.RData')
 
-# MODEL 2: TEMPORAL, ADJACENT YEARS ================================================================
+# posteriors
+
+dr_timeN <- tidy_draws(m_timeN) %>% 
+  select(starts_with(c('b', 'sd', '.')), sigma) %>% 
+  tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
+
+dr_timeN <- dr_timeN %>% mutate(var_type = case_when(str_detect(vars, 'log|delta') ~ 'fixed',
+                                                             .default = 'randommodel'),
+                                        prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log (S)',
+                                                              vars == 'b_loghgravityP390505' ~ 'Market gravity',
+                                                              vars == 'sd_DataID__Intercept' ~ '(1|study)',
+                                                              vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                                                              vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
+                                                              vars == 'sigma' ~ 'σ',
+                                                              vars == 'b_Intercept' ~ 'β0',
+                                                              .default = vars))
+
+# Alternative temporal model, fluxes ===============================================================
 # does proportional diversity change result in proportional productivity change?
 
 pr_time_flux <- default_prior(logratio1_prod ~ logratio1_S + log(hgravity + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
@@ -194,32 +208,29 @@ m_time_flux <- brm(data = vars_time,
 ## POSTERIORS PREDICTIONS ==========================================================================
  
 # get posterior draws
-dr_time_flux <- tidy_draws(mod_t) %>% 
+dr_time_flux <- tidy_draws(m_time_flux) %>% 
   select(starts_with(c('b', 'sd', '.')), sigma) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
 dr_time_flux <- dr_time_flux %>% mutate(var_type = case_when(str_detect(vars, 'log|delta') ~ 'fixed',
                                                                .default = 'randommodel'),
                                           prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log (S)',
-                                                                vars == 'b_loghgravityP1' ~ 'Human gravity',
+                                                                vars == 'b_loghgravityP390505' ~ 'Market gravity',
                                                                 vars == 'sd_DataID__Intercept' ~ '(1|study)',
                                                                 vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                                                                vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
                                                                 vars == 'sigma' ~ 'σ',
                                                                 vars == 'b_Intercept' ~ 'β0',
                                                                 .default = vars))
 
 # model partial predictions
 newdata <- tidytable(logratio1_S = runif(500, min(vars_time$logratio1_S, na.rm = T), max(vars_time$logratio1_S, na.rm = T)),
-                           hgravity = runif(500, min(vars_time$hgravity), max(vars_time$hgravity)))
+                           hgravity = mean(vars_time$hgravity))
 
 # partial effect of ∆S
-pred_time_flux <- newdata %>% mutate(hgravity = mean(vars_time$hgravity)) %>% 
-  epred_draws(mod_t, re_formula = NA, newdata = ., value = 'deltaProd_S') %>% ungroup %>% 
+pred_time_flux <- epred_draws(m_time_flux, re_formula = NA, newdata = newdata, value = 'deltaProd_S') %>% ungroup %>% 
   select(!hgravity)
-# partial effect of human gravity
-pred_time_flux <- newdata %>% mutate(logratio1_S = mean(vars_time$logratio1_S)) %>% 
-  epred_draws(mod_t, re_formula = NA, newdata = ., value = 'deltaProd_hgrav') %>% 
-  ungroup %>% select(hgravity, deltaProd_hgrav) %>% bind_cols(pred_time_flux, .)
+
 
 # MODEL 5: QUANTILE BIOGEO ==================================================================================
 

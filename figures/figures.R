@@ -61,7 +61,7 @@ f_map_rare <- ggplot() +
 f_map_single <- ggplot() +
   geom_sf(data = world, color='grey75', fill='grey95') +
   geom_sf(data = point_single, 
-          aes(fill = meanS), shape = 21, size = 1, alpha = 0.5) +
+          aes(fill = meanS), shape = 21, size = 2, alpha = 0.5) +
   coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
   theme_minimal() + theme(legend.position = 'bottom') +
   scale_fill_gradientn(name = 'mean(S)', colours = cherulean_cols(palette = 'gomphosus')(5), 
@@ -80,7 +80,7 @@ f_regionN <- ggplot(data = dt_biogeo) +
   scale_fill_cherulean(palette = 'cheridis', discrete = T) + 
   guides(fill = 'none') + style + scale_x_log10()
 
-((f_map_rare / f_map_single) | f_regionN) + plot_layout(ncol = 2, widths = c(4, 1))
+(f_map_rare / f_map_single)
 
 f_map <- ggplot() +
   geom_sf(data = world, color='grey75', fill='grey95') +
@@ -236,7 +236,7 @@ f_time1 <- ggplot(data = vars_time_long) +
   geom_linerange(aes(ymin = prod_slope - 1.96*prod_se, 
                      ymax = prod_slope + 1.96*prod_se, 
                      x = S_slope, colour = quad), size = 0.2, alpha = 0.3) +
-  scale_colour_manual(values = c('#008ac5','#008ac5','#DBC539','#DBC539')) +
+  scale_colour_manual(values = c('#1c5dac','#1c5dac','#60dcac','#60dcac')) +
   # uncertain points
   geom_point(data = vars_time_long %>% filter(!str_detect(quad, 'certain')),
              aes(x = S_slope, y = prod_slope), 
@@ -245,7 +245,7 @@ f_time1 <- ggplot(data = vars_time_long) +
   geom_point(data = vars_time_long %>% filter(str_detect(quad, 'certain')),
              aes(x = S_slope, y = prod_slope, fill = quad), 
              size = 2, shape = 21, colour = '#444444AA') +
-  scale_fill_manual(values = c('#008ac5','#DBC539')) +
+  scale_fill_manual(values = c('#1c5dac','#60dcac')) +
   geom_ribbon(data = pred_time_full %>% ungroup %>% group_by(S_slope) %>%
                 summarise(lwr = quantile(deltaProd_S, 0.025),
                           upr = quantile(deltaProd_S, 0.975),
@@ -277,28 +277,64 @@ f_time <- f_time_x + plot_spacer() + f_time1 + f_time_y +
   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
 f_time
 
+## Posterior distributions =========================================================================
+
+f_time_post1 <- ggplot(dr_time_full %>% filter(var_type == 'fixed')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95, colour = '#000', slab_linewidth = 0.5) +  
+  scale_fill_manual(values = '#92d4c7', na.value = '#fff') +
+  stat_spike(aes(x = values, y = prettyvar, ), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_time_post2 <- ggplot(dr_time_full %>% filter(var_type == 'randommodel')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95, colour = '#000', slab_linewidth = 0.5) +  
+  scale_fill_manual(values = '#92d4c7', na.value = '#fff') +
+  stat_spike(aes(x = values, y = prettyvar), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_time_post <- f_time_post1 / f_time_post2 + plot_layout(heights = c(2, 5))
+f_time_post
+
+
 # Change trajectory bars ============================================================================
 
-ggplot(data = dt_tchange) +
-  geom_col(aes(y = n, fill = quad, x = group), position = 'fill') + 
-  scale_fill_manual(values = c('#6BC2E8','#008ac5','#fff29b','#DBC539'), name = NULL,
+ggplot(data = dt_tchange %>% filter(group == 'full')) +
+  geom_col(aes(y = n, fill = quad, x = group), position = 'fill', colour = '#222', linewidth = 0.5) + 
+  scale_fill_manual(values = c('#1c5dac77','#1c5dac','#60dcac77','#60dcac'), name = NULL,
                     labels = c('negative', 'negative 95% CI', 'positive', 'positive 95% CI')) +
   theme_minimal() + labs(x = NULL, y = NULL) +
   guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
   theme(panel.grid = element_blank(), legend.position = 'bottom')
 
 
-f_time_trends <- ggplot(data = dt_temp %>% filter(group == 'full')) +
+f_time_slab <- ggplot() +
+  stat_slab(data = vars_time_long %>% select(S_slope, prod_slope) %>% 
+              pivot_longer(cols = everything(), names_to = 'metric', values_to = 'slopes'), 
+            aes(x = slopes, y = metric), normalize = 'groups', 
+            fill = '#fff', colour = '#222', linewidth = 0.5) + 
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', alpha = 0.5, colour = '#000') + style
+  
+
+f_time_bar <- ggplot(data = dt_temp %>% filter(group == 'full')) +
   geom_col_pattern(aes(y = metric, x = n, fill = direction, pattern = delta_certain), 
-                   colour = 'black', position = 'fill') + style +
+                   colour = '#222', position = 'fill') + style +
   geom_vline(aes(xintercept = 0.5), linetype = 'dashed', alpha = 0.5, colour = '#000') +
   labs(x = NULL, y = NULL) +
   scale_pattern_discrete(choices = c('circle', 'stripe'), labels = c('NA', 'certain')) +
-  scale_fill_manual(values = c('grey20', 'grey70', '#FFF'), labels = c('decreasing', 'increasing', 'no change'))
+  scale_fill_manual(values = c('#3a89e3', '#3a89e355', '#FFF'), labels = c('decreasing', 'increasing', 'no change'))
+
+f_time_slab / f_time_bar
 
 
 
-# Spatiotemporal figure ============================================================================
+#http://biotime.st-andrews.ac.uk:8787/graphics/plot_zoom_png?width=100&height=327 Spatiotemporal figure ============================================================================
 
 f_spatial_dt +
   labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
@@ -316,7 +352,7 @@ f_spatial_dt +
 f_null_post1 <- ggplot(null_draws %>% filter(var_type == 'fixed')) +
   statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = '#60dcac', na.value = 'grey90') +
   statime_pike(aes(x = values, y = prettyvar, ), at = 'median',
              normalize = 'groups', size = 0, colour = '#333660') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
@@ -326,7 +362,7 @@ f_null_post1 <- ggplot(null_draws %>% filter(var_type == 'fixed')) +
 f_null_post2 <- ggplot(null_draws %>% filter(var_type == 'randommodel')) +
   statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = '#60dcac', na.value = 'grey90') +
   statime_pike(aes(x = values, y = prettyvar), at = 'median',
              normalize = 'groups', size = 0, colour = '#333660') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
@@ -384,7 +420,7 @@ f_null
 f_space_post1 <- ggplot(spatial_draws %>% filter(var_type == 'fixed')) +
   statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = '#60dcac', na.value = 'grey90') +
   statime_pike(aes(x = values, y = prettyvar, ), at = 'median',
              normalize = 'groups', size = 0, colour = '#333660') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
@@ -394,7 +430,7 @@ f_space_post1 <- ggplot(spatial_draws %>% filter(var_type == 'fixed')) +
 f_space_post2 <- ggplot(spatial_draws %>% filter(var_type == 'randommodel')) +
   statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = '#60dcac', na.value = 'grey90') +
   statime_pike(aes(x = values, y = prettyvar), at = 'median',
              normalize = 'groups', size = 0, colour = '#333660') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
@@ -663,42 +699,20 @@ geo_resid2 <- ggplot(data = spatial_resid) + style +
              shape = 21, colour = '#000', alpha = 0.2) +
   scale_x_log10()
 
-geo_resid1 / geo_resid2
+geo_resid3 <- ggplot(data = spatial_resid) + style +
+  labs(x = 'S', y = 'Model residuals') +
+  geom_point(aes(x = S, y = abs(resid), 
+             shape = 21, colour = '#000', alpha = 0.2) +
+  scale_x_log10() + scale_y_log10()
 
-# ∆Prod ~ ∆S, long term trajectory =================================================================
-
-## Posterior distributions =========================================================================
-
-f_T_post1 <- ggplot(dr_time_full %>% filter(var_type == 'fixed')) +
-  statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
-            normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
-  statime_pike(aes(x = values, y = prettyvar, ), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
-  labs(x = NULL, y = NULL) + style +
-  guides(fill = 'none')
-
-f_T_post2 <- ggplot(dr_time_full %>% filter(var_type == 'randommodel')) +
-  statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
-            normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
-  statime_pike(aes(x = values, y = prettyvar), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
-  labs(x = NULL, y = NULL) + style +
-  guides(fill = 'none')
-
-f_T_post <- f_T_post1 / f_T_post2 + plot_layout(heights = c(2, 5))
-f_T_post
-
+geo_resid1 + geo_resid2 + geo_resid3
 
 
 
 
 # ∆Prod ~ ∆S, log ratio adjacent years =============================================================
 
-f_t_post1 <- ggplot() +
+f_flux_post1 <- ggplot() +
   # log ratio fluxes
   statime_lab(data = dr_time_full %>% filter(var_type == 'fixed'),
             aes(x = values, y = prettyvar, fill = after_stat(level)), 
@@ -718,7 +732,7 @@ f_t_post1 <- ggplot() +
   labs(x = NULL, y = NULL) + style +
   guides(fill = 'none')
 
-f_t_post2 <- ggplot() +
+f_flux_post2 <- ggplot() +
   statime_lab(data = dr_time_full %>% filter(var_type == 'randommodel'),
             aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
@@ -738,78 +752,62 @@ f_t_post2 <- ggplot() +
   labs(x = NULL, y = NULL) + style +
   guides(fill = 'none')
 
-f_t_post <- f_t_post1 / f_t_post2 + plot_layout(heights = c(1,2))
-f_t_post
+f_flux_post <- f_flux_post1 / f_flux_post2 + plot_layout(heights = c(1,2))
+f_flux_post
 
 
 ## Partial prediction plot =========================================================================
  
 
-f_time_1 <- ggplot(data = vars_time) +
+f_time_1 <- ggplot(data = vars_time_long) +
   labs(x = bquote("∆log"[2]~"S"), y = bquote("∆log"[2]~"Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#AAA') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#AAA') +
-  geom_linerange(aes(xmin = logratio1_S_l, 
-                     xmax = logratio1_S_u, 
-                     y = logratio1_prod, colour = quad), size = 0.2, alpha = 0.3) +
-  geom_linerange(aes(ymin = logratio1_prod_l, 
-                     ymax = logratio1_prod_u, 
-                     x = logratio1_S, colour = quad), size = 0.2, alpha = 0.3) +
-  scale_colour_manual(values = c('#008ac5','#008ac5','#DBC539','#DBC539')) +
+  geom_linerange(aes(xmin = S_slope - 1.96*S_se, 
+                     xmax = S_slope + 1.96*S_se, 
+                     y = prod_slope, colour = quad), size = 0.2, alpha = 0.3) +
+  geom_linerange(aes(ymin = prod_slope - 1.96*prod_se, 
+                     ymax = prod_slope + 1.96*prod_se, 
+                     x = S_slope, colour = quad), size = 0.2, alpha = 0.3) +
+  scale_colour_manual(values = c('#1c5dac','#1c5dac','#60dcac','#60dcac')) +
   # uncertain points
-  geom_point(data = vars_time %>% filter(!str_detect(quad, 'certain')),
-             aes(x = logratio1_S, y = logratio1_prod), 
+  geom_point(data = vars_time_long %>% filter(!str_detect(quad, 'certain')),
+             aes(x = S_slope, y = prod_slope), 
              size = 2, shape = 21, alpha = 0.3, colour = '#444', fill = '#FFF') +
   # certain slopes
-  geom_point(data = vars_time %>% filter(str_detect(quad, 'certain')),
-             aes(x = logratio1_S, y = logratio1_prod, fill = quad), 
+  geom_point(data = vars_time_long %>% filter(str_detect(quad, 'certain')),
+             aes(x = S_slope, y = prod_slope, fill = quad), 
              size = 2, shape = 21, colour = '#444444AA') +
-  scale_fill_manual(values = c('#008ac5','#DBC539')) +
-  geom_ribbon(data = t_partialpred %>% ungroup %>% group_by(logratio1_S) %>% 
+  scale_fill_manual(values = c('#1c5dac','#60dcac')) +
+  geom_ribbon(data = pred_time %>% ungroup %>% group_by(S_slope) %>% 
                 summarise(lwr = quantile(deltaProd_S, 0.025),
                           upr = quantile(deltaProd_S, 0.975),
                           deltaProd_S = quantile(deltaProd_S, 0.5)), 
-              aes(x = logratio1_S, ymin = lwr, ymax = upr), 
+              aes(x = S_slope, ymin = lwr, ymax = upr), 
               colour = '#000', fill = 'transparent', linetype = 'dashed') +
-  geom_line(data = t_partialpred %>% ungroup %>% group_by(logratio1_S) %>% 
+  geom_line(data = pred_time %>% ungroup %>% group_by(S_slope) %>% 
               summarise(lwr = quantile(deltaProd_S, 0.025),
                         upr = quantile(deltaProd_S, 0.975),
                         deltaProd_S = quantile(deltaProd_S, 0.5)), 
-            aes(x = logratio1_S, y = deltaProd_S), 
+            aes(x = S_slope, y = deltaProd_S), 
             colour = '#000', linewidth = .75) +
   geom_abline(aes(intercept = 0, slope = 1), linetype = 'dashed', colour = '#444', alpha = 0.6) +
   guides(colour = 'none', fill = 'none') +
-  coord_cartesian(ylim = c(-4,7.5), xlim = c(-3.2, 4)) + style
+  coord_cartesian(ylim = c(-3.5,3), xlim = c(-2.5, 1.5)) + style
 
-f_time_x <- ggplot(data = vars_time) +
-  geom_density(aes(x = logratio1_S), fill = '#CCC', colour = '#666') +
+f_time_x <- ggplot(data = vars_time_long) +
+  geom_density(aes(x = S_slope), fill = '#CCC', colour = '#666') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
-  theme_void() + scale_x_continuous(limits = c(-3.2, 4))
+  theme_void() + scale_x_continuous(limits = c(-2.5, 1.5))
 
-f_time_y <- ggplot(data = vars_time) +
-  geom_density(aes(y = logratio1_prod), fill = '#CCC', colour = '#666') +
+f_time_y <- ggplot(data = vars_time_long) +
+  geom_density(aes(y = prod_slope), fill = '#CCC', colour = '#666') +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
-  theme_void() + scale_y_continuous(limits = c(-4, 7.5))
+  theme_void() + scale_y_continuous(limits = c(-3.5,3))
 
-f_time_ <- f_time_x + plotime_pacer() + f_time_1 + f_time_y + 
+f_time <- f_time_x + plot_spacer() + f_time_1 + f_time_y + 
   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
-f_time_
-
-f_t_g <- ggplot(data = vars_time) +
-  labs(x = "Human gravity",
-       y = bquote("∆log"[2]~"Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
-  geom_linerange(aes(ymin = logratio1_prod - 1.96*prod_se, 
-                     ymax = logratio1_prod + 1.96*prod_se, 
-                     x = hgravity + 1, colour = quad), size = 0.2) +
-  scale_colour_manual(values = c('#008ac5','#008ac5','#DBC539','#DBC539')) +
-  geom_point(aes(x = hgravity + 1, y = logratio1_prod, fill = quad), 
-             size = 2, shape = 21, colour = '#444') +
-  scale_fill_manual(values = c('#008ac5','#008ac5','#DBC539','#DBC539')) +
-  geom_ribbon(data = t2_pred, aes(ymin = prod_gpar_l, ymax = prod_gpar_u, x = hgravity),
-              fill = '#333660', alpha = 0.3) +
-  geom_line(data = t2_pred, aes(x = hgravity, y = prod_gpar), colour = '#333660', linewidth = 0.5) +
-  scale_x_log10() + style
-f_t_g
+f_time
 
 
 
@@ -821,7 +819,7 @@ f_t_g
 f_nullsp1_post1 <- ggplot(nullsp1_draws %>% filter(var_type == 'fixed')) +
   statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = '#60dcac', na.value = 'grey90') +
   statime_pike(aes(x = values, y = prettyvar, ), at = 'median',
              normalize = 'groups', size = 0, colour = '#333660') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
@@ -831,7 +829,7 @@ f_nullsp1_post1 <- ggplot(nullsp1_draws %>% filter(var_type == 'fixed')) +
 f_nullsp1_post2 <- ggplot(nullsp1_draws %>% filter(var_type == 'randommodel')) +
   statime_lab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
             normalize = 'groups', .width = .95) +  
-  scale_fill_manual(values = '#DBC539', na.value = 'grey90') +
+  scale_fill_manual(values = '#60dcac', na.value = 'grey90') +
   statime_pike(aes(x = values, y = prettyvar), at = 'median',
              normalize = 'groups', size = 0, colour = '#333660') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
