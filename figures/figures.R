@@ -11,9 +11,11 @@ require(ggpattern)
 
 # colour palettes
 source('https://gist.githubusercontent.com/cherfychow/e9ae890fd16f4c86730748c067feee2b/raw/b2db138ab8164c237129308ea643de78cd54b252/cherulean.R')
-style <- theme_classic(base_size = 15, base_family = 'Helvetica Neue') + theme(panel.grid = element_blank(),
-                                          axis.ticks = element_line(linewidth = 0.3),
-                                          axis.line = element_line(linewidth = 0.3))
+style <- theme_classic(base_size = 15, base_family = 'Lato') + 
+  theme(panel.grid = element_blank(),
+    axis.text = element_text(colour = '#222'),
+    axis.ticks = element_line(linewidth = 0.3, colour = '#222'),
+    axis.line = element_line(linewidth = 0.3, colour = '#222'))
 
 single_x <- c(1,5,10,50,100,150)
 single_y <- c(0,0.001,.01, .1, 1, 10, 100, 500)
@@ -113,13 +115,13 @@ f_spatial_dt <- ggplot() +
   
   stat_bin_2d(data = vars_single, aes(x = S, y = prod_kg, fill = after_stat(count)), bins = 100) +
   # geom_density_2d(data = vars_single, aes(x = S, y = prod_kg), colour = '#fff', bins = 8, linewidth = 0.3) +
-  scale_fill_cherulean(palette = 'cheridis', discrete = F, reverse = T) +
+  scale_fill_cherulean(palette = 'gomphosus', discrete = F, reverse = T) +
   
   scale_x_log10(breaks = single_x) + scale_y_log10(breaks = single_y) + 
   style
 
 # heat map + spatial partial prediction
-f_spatial1 <- f_spatial_dt + 
+f_spatial <- f_spatial_dt + 
   geom_ribbon(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
                 summarise(lwr = quantile(prod_S, 0.025),
                           upr = quantile(prod_S, 0.975),
@@ -136,9 +138,11 @@ f_spatial1 <- f_spatial_dt +
 
 # quantile regression
 f_spatial2 <- f_spatial_dt + 
-  geom_ribbon(data = pred_quant, aes(x = S, ymin = lower, ymax = higher, group = quantile),
+  geom_ribbon(data = pred_quant %>% filter(quantile != 'med'), 
+    aes(x = S, ymin = lower, ymax = higher, group = quantile),
               fill = 'transparent', colour = '#000', linetype = 'dashed') +
-  geom_line(data = pred_quant, aes(x = S, y = fit, group = quantile), linewidth = .75) 
+  geom_line(data = pred_quant %>% filter(quantile != 'med'), 
+    aes(x = S, y = fit, group = quantile), linewidth = .75) 
 
 # null models
 f_spatial3 <- f_spatial_dt + 
@@ -216,9 +220,13 @@ f_spatial3 <- f_spatial_dt +
                         upr = quantile(prod_S, 0.975),
                         prod_S = quantile(prod_S, 0.5)), 
             aes(x = S, y = prod_S), 
-            colour = 'darkred', alpha = 0.5, linewidth = 0.75)
+            colour = 'darkred', alpha = 0.5, linewidth = 0.75) +
 
-f_spatial1 + f_spatial2 + plot_layout(guides = 'collect')
+  theme(axis.text.x = element_blank()) + labs(x = NULL)
+
+f_spatial
+
+f_spatial2 + f_spatial3 + plot_layout(guides = 'collect')
 
 # null model comparisons
 
@@ -226,16 +234,16 @@ f_spatial1 + f_spatial2 + plot_layout(guides = 'collect')
 
 # Temporal model prediction ========================================================================
 
-f_time1 <- ggplot(data = vars_time_long) +
+f_time <- ggplot(data = vars_time_long) +
   labs(x = "∆log S", y = bquote("∆log Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#AAA') +
   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#AAA') +
   geom_linerange(aes(xmin = S_slope - 1.96*S_se, 
                      xmax = S_slope + 1.96*S_se, 
-                     y = prod_slope, colour = quad), size = 0.2, alpha = 0.3) +
+                     y = prod_slope, colour = quad), linewidth = 0.2, alpha = 0.3) +
   geom_linerange(aes(ymin = prod_slope - 1.96*prod_se, 
                      ymax = prod_slope + 1.96*prod_se, 
-                     x = S_slope, colour = quad), size = 0.2, alpha = 0.3) +
+                     x = S_slope, colour = quad), linewidth = 0.2, alpha = 0.3) +
   scale_colour_manual(values = c('#1c5dac','#1c5dac','#60dcac','#60dcac')) +
   # uncertain points
   geom_point(data = vars_time_long %>% filter(!str_detect(quad, 'certain')),
@@ -246,13 +254,13 @@ f_time1 <- ggplot(data = vars_time_long) +
              aes(x = S_slope, y = prod_slope, fill = quad), 
              size = 2, shape = 21, colour = '#444444AA') +
   scale_fill_manual(values = c('#1c5dac','#60dcac')) +
-  geom_ribbon(data = pred_time_full %>% ungroup %>% group_by(S_slope) %>%
+  geom_ribbon(data = pred_time %>% ungroup %>% group_by(S_slope) %>%
                 summarise(lwr = quantile(deltaProd_S, 0.025),
                           upr = quantile(deltaProd_S, 0.975),
                           deltaProd_S = quantile(deltaProd_S, 0.5)),
               aes(x = S_slope, ymin = lwr, ymax = upr),
               colour = '#000', fill = 'transparent', linetype = 'dashed') +
-  geom_line(data = pred_time_full %>% ungroup %>% group_by(S_slope) %>%
+  geom_line(data = pred_time %>% ungroup %>% group_by(S_slope) %>%
               summarise(lwr = quantile(deltaProd_S, 0.025),
                         upr = quantile(deltaProd_S, 0.975),
                         deltaProd_S = quantile(deltaProd_S, 0.5)),
@@ -263,19 +271,19 @@ f_time1 <- ggplot(data = vars_time_long) +
   scale_x_continuous(limits = c(-2.5, 1.5)) +
   scale_y_continuous(limits = c(-3.5, 3)) + style
 
-f_time_x <- ggplot(data = vars_time_long) +
-  geom_density(aes(x = S_slope), fill = '#CCC', colour = '#666') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
-  theme_void() + scale_x_continuous(limits = c(-2.5, 1.5))
+# f_time_x <- ggplot(data = vars_time_long) +
+#   geom_density(aes(x = S_slope), fill = '#CCC', colour = '#666') +
+#   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
+#   theme_void() + scale_x_continuous(limits = c(-2.5, 1.5))
 
-f_time_y <- ggplot(data = vars_time_long) +
-  geom_density(aes(y = prod_slope), fill = '#CCC', colour = '#666') +
-  geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
-  theme_void() + scale_y_continuous(limits = c(-3.5, 3))
+# f_time_y <- ggplot(data = vars_time_long) +
+#   geom_density(aes(y = prod_slope), fill = '#CCC', colour = '#666') +
+#   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
+#   theme_void() + scale_y_continuous(limits = c(-3.5, 3))
 
-f_time <- f_time_x + plot_spacer() + f_time1 + f_time_y + 
-  plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
-f_time
+# f_time <- f_time_x + plot_spacer() + f_time1 + f_time_y + 
+#   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
+# f_time
 
 ## Posterior distributions =========================================================================
 
@@ -323,9 +331,9 @@ f_time_slab <- ggplot() +
   
 
 f_time_bar <- ggplot(data = dt_temp %>% filter(group == 'full')) +
-  geom_col_pattern(aes(y = metric, x = n, fill = direction, pattern = delta_certain), 
-                   colour = '#222', position = 'fill') + style +
-  geom_vline(aes(xintercept = 0.5), linetype = 'dashed', alpha = 0.5, colour = '#000') +
+  geom_col_pattern(aes(x = metric, y = n, fill = direction, pattern = delta_certain), 
+                   colour = '#222', position = 'fill', width = 0.5) + style +
+  geom_hline(aes(yintercept = 0.5), linetype = 'dashed', alpha = 0.5, colour = '#000') +
   labs(x = NULL, y = NULL) +
   scale_pattern_discrete(choices = c('circle', 'stripe'), labels = c('NA', 'certain')) +
   scale_fill_manual(values = c('#3a89e3', '#3a89e355', '#FFF'), labels = c('decreasing', 'increasing', 'no change'))
@@ -333,14 +341,15 @@ f_time_bar <- ggplot(data = dt_temp %>% filter(group == 'full')) +
 f_time_slab / f_time_bar
 
 
-
-#http://biotime.st-andrews.ac.uk:8787/graphics/plot_zoom_png?width=100&height=327 Spatiotemporal figure ============================================================================
-
-f_spatial_dt +
+ggplot() +
   labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
+  # gradient background
+  geom_point(data = vars_single, aes(x = S, y = prod_kg), size = 2, colour = '#666') +
+  
+  # temporal points
   geom_point(data = vars_time2, aes(x = S1, y = P1, fill = quad), 
-             size = 2.5,shape = 21, alpha = 0.7, colour = 'grey20') +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
+             size = 2.5, shape = 21, alpha = 0.7, colour = 'grey20') +
+  scale_fill_manual(values = c('#1c5dac','#60dcac')) +
   scale_x_log10() + scale_y_log10() + style + theme(legend.position = 'bottom') +
   facet_wrap(~quad)
 

@@ -249,7 +249,7 @@ dr_sp0_max <- dr_sp0_max %>% mutate(var_type = case_when(str_detect(vars, 'log')
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgravity = runif(500, min(vars_single$hgravity), max(vars_single$hgravity)))
+                     hgravity = mean(vars_single$hgravity))
 
 # partial effect of ∆S
 pred_sp0_max <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
@@ -281,17 +281,33 @@ dr_sp0_min <- dr_sp0_min %>% mutate(var_type = case_when(str_detect(vars, 'log')
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgravity = runif(500, min(vars_single$hgravity), max(vars_single$hgravity)))
+                     hgravity = mean(vars_single$hgravity))
 
 # partial effect of ∆S
 pred_sp0_min <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
   epred_draws(m_sp0_min, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
   select(!hgravity)
-# partial effect of Market gravity
-pred_sp0_min <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
-  epred_draws(m_sp0_min, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
-  ungroup %>% select(hgravity, prod_hgrav) %>% 
-  bind_cols(pred_sp0_min, .) %>% ungroup
+
+ggplot(data = dt_null) + 
+  # geom_point(data = vars_single, aes(x = S, y = prod_kg), 
+  #            colour = '#666', shape = 21, alpha = 0.3) + 
+  geom_point(aes(x = S, y = prod0_spmin), shape = 21, colour = 'blue', alpha = 0.2) + 
+  # min Kmax
+  geom_ribbon(data = pred_sp0_min %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = '#000', alpha = 0.1) +
+  
+  geom_line(data = pred_sp0_min %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = '#000', alpha = 0.8, linewidth = 0.75) +
+  scale_x_log10() + scale_y_log10() + style
+
 rm(newdata)
 
 # NULL ABUNDANCE ===================================================================================
