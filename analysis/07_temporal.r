@@ -104,22 +104,6 @@ rm(tempS, tempdata, temppred)
 summary(vars_time)
 
 
-## ∆N ==============================================================================================
-
-temp <- dt_rareass %>% group_by(DataID, seriesID, Year, SamplingEventID) %>% 
-  summarise(totalN = sum(Abundance)) %>% ungroup %>%
-  group_by(DataID, seriesID, Year) %>% 
-  summarise(totalN = mean(totalN))
-
-vars_time <- left_join(vars_time, temp, by = c('DataID', 'seriesID', 'Year'))
-
-vars_time$delta_N <- NA
-for (i in which(vars_time$Year_rel != 1)) {
-  vars_time$delta_N[i] <- vars_time$totalN[i] - vars_time$totalN[i-1]
-}
-
-
-
 # LARGE SCALE TRAJECTORY ===========================================================================
 
 # whole time series trajectory of productivity and diversity
@@ -187,6 +171,28 @@ for (i in 1:nrow(vars_time_long)) {
   # store coefficients
   vars_time_long$sst_slope[i] <- coefficients(mod_sst[[i]])[2] # slope
   vars_time_long$sst_se[i] <- summary(mod_sst[[i]])$coefficients[2,2] # slope std error
+  print(paste0('Time series ', i, ' complete of ', nrow(vars_time_long)))
+  
+}
+
+## ∆N ==============================================================================================
+temp <- dt_rareass %>% select(DataID, seriesID, SamplingEventID, Abundance, Year) %>% 
+  group_by(DataID, seriesID, SamplingEventID, Year) %>% 
+  summarise(N = sum(Abundance))
+
+vars_time_long$N_slope <- NA
+vars_time_long$N_se <- NA
+m_Nt <- as.list(rep(NA, nrow(vars_time_long)))
+
+for (i in 1:nrow(vars_time_long)) {
+  
+  m_Nt[[i]] <- temp %>%
+    filter(DataID == vars_time_long$DataID[i], seriesID == vars_time_long$seriesID[i]) %>% 
+  glm(data = ., N ~ Year, family = Gamma(link = 'log'))
+  
+  # store coefficients
+  vars_time_long$N_slope[i] <- coefficients(m_Nt[[i]])[2] # slope
+  vars_time_long$N_se[i] <- summary(m_Nt[[i]])$coefficients[2,2] # slope std error
   print(paste0('Time series ', i, ' complete of ', nrow(vars_time_long)))
   
 }

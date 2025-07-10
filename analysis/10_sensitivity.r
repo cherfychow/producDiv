@@ -83,3 +83,52 @@ f_Lsens_max <-  ggplot(data = dt_length) +
   style + scale_y_log10() + scale_x_log10()
 
 f_Lsens_pair + f_Lsens_delta + f_Lsens_rel + f_Lsens_max
+
+
+# Sample completeness ==============================================================================
+
+require(lme4)
+require(dplyr)
+load('model_vars.RData')
+
+m_spatial_comp <- glmer(data = vars_single %>% filter(compness > 0.8),
+                       prod_kg ~ log(S) + log(hgravity + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                       family = Gamma(link = 'log'))
+save(m_spatial_comp, file = 'm_spatial_comp.RData')
+
+pred_spatial_comp <- vars_single %>% filter(compness > 0.8) %>% 
+  mutate(hgravity = mean(hgravity)) %>% select(S, hgravity) %>% 
+  distinct
+temp <- predict(m_spatial_comp, newdata = pred_spatial_comp, re.form = NA, se.fit = T)
+pred_spatial_comp$prod_pred <- exp(temp$fit)
+pred_spatial_comp$prod_lwr <- exp(temp$fit - 1.96*temp$se.fit)
+pred_spatial_comp$prod_upr <- exp(temp$fit + 1.96*temp$se.fit)
+
+# histogram of sample completeness
+(ggplot(data = dt_complete) +
+   labs(x = 'Sample completeness', y = 'Count') +
+   geom_histogram(aes(x = compness), colour = '#333', fill = 'transparent') + style) +
+  
+  (f_spatial_dt +
+     stat_density_2d(data = vars_single %>% filter(compness < 0.8), aes(x = S, y = prod_kg), colour = '#000', alpha = 0.5) +
+     scale_colour_cherulean(palette = 'cheridis', discrete = F, name = 'Completeness') +
+     theme(legend.position = 'bottom'))
+
+# comparing model predictions
+f_spatial_dt +
+  geom_ribbon(data = pred_spatial_comp, aes(x = S, ymin = prod_lwr, ymax = prod_upr), 
+              fill = 'blue', alpha = 0.3) +
+  geom_line(data = pred_spatial_comp, aes(x = S, y = prod_pred), colour = 'blue') +
+  geom_ribbon(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  
+  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = '#000', linewidth = 1)

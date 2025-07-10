@@ -8,17 +8,17 @@ require(brms)
 require(rfishprod)
 require(tidybayes)
 
-dt_null <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, hgrav2, gridcell)
+dt_null <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, hgravity, gridcell)
 
 # NULL PRODUCTIVITY/SIZE ===========================================================================
 
-summary(prod_single)
+summary(dt_Kmax)
 
 # Kmax is estimated per species but now integrate with individual length records
 dt_prod_null <- dt_single %>% 
   select(DataID, seriesID, fishbase_valid, SamplingEventID, Abundance) %>% 
   rename(Species = fishbase_valid)
-dt_prod_null <- left_join(dt_prod_null, prod_single, by = c('Species', 'DataID', 'seriesID', 'SamplingEventID'), 
+dt_prod_null <- left_join(dt_prod_null, dt_Kmax, by = c('Species', 'DataID', 'seriesID', 'SamplingEventID'), 
                             na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
   select(!c(Diet, Position))
 summary(dt_prod_null)
@@ -33,10 +33,7 @@ summary(dt_prod_null)
 # lowers and uppers refer to the Kmax value used!
 # not necessarily the lower or upper of that metric
 dt_prod_null <- dt_prod_null %>% 
-  mutate(prod0_Lmin = somaGain(a, b, Lmeas = Lmin, Lmax = MaxSizeTL, Kmax = Kmax),
-         prod0_Lmin_l = somaGain(a, b, Lmeas = Lmin, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
-         prod0_Lmin_u = somaGain(a, b, Lmeas = Lmin, Lmax = MaxSizeTL, Kmax = Kmax_uppq),
-         prod0_Lmax = somaGain(a, b, Lmeas = Lmax, Lmax = MaxSizeTL, Kmax = Kmax),
+  mutate(prod0_Lmax = somaGain(a, b, Lmeas = Lmax, Lmax = MaxSizeTL, Kmax = Kmax),
          prod0_Lmax_l = somaGain(a, b, Lmeas = Lmax, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
          prod0_Lmax_u = somaGain(a, b, Lmeas = Lmax, Lmax = MaxSizeTL, Kmax = Kmax_uppq)
   )
@@ -75,164 +72,174 @@ dt_prod_null <- dt_prod_null %>% mutate(across(starts_with('prod0'), ~ .x * 1000
 dt_null <- dt_prod_null %>% select(!Area) %>% 
   left_join(dt_null, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
 
-## NULL PRODUCTIVITY MODEL ==========================================================================
+# NULL PRODUCTIVITY MODEL ==========================================================================
+
+load('dt_null.RData')
+require(brms)
+
 # weakly informative priors
-null_priors <- default_prior(prod0_Lmin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
+pr_prod0 <- default_prior(prod0_Lmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                                 data = dt_null, family = Gamma(link = 'log'))
-null_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-null_priors$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
+pr_prod0$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
+pr_prod0$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
-mod_null <- brm(data = dt_null,
-                   formula = prod0_Lmin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
+m_prod0 <- brm(data = dt_null,
+                   formula = prod0_Lmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                    family = Gamma(link = 'log'),
-                   prior = null_priors, iter = 5000)
+                   prior = pr_prod0, iter = 5000)
 
+save(m_prod0, file = 'm_prod0.RData')
 
 ## POSTERIORS PREDICtIONS 
 
 # get posterior draws
-null_draws <- tidy_draws(mod_null) %>% 
+dr_prod0 <- tidy_draws(m_prod0) %>% 
   select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-null_draws <- null_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+dr_prod0 <- dr_prod0 %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
                                                                .default = 'randommodel'),
                                           prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                                vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                                vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
                                                                 vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
                                                                 vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
-                                                                vars == 'Intercept' ~ 'α',
                                                                 vars == 'b_Intercept' ~ 'β0',
                                                                 .default = vars))
 
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgrav2 = runif(500, min(vars_single$hgrav2), max(vars_single$hgrav2)))
+                     hgravity = mean(vars_single$hgravity))
 
 # partial effect of ∆S
-null_partialpred <- newdata %>% mutate(hgrav2 = mean(vars_single$hgrav2)) %>% 
-  epred_draws(mod_null, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
-  select(!hgrav2)
-# partial effect of human gravity
-null_partialpred <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
-  epred_draws(mod_null, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
-  ungroup %>% select(hgrav2, prod_hgrav) %>% 
-  bind_cols(null_partialpred, .) %>% ungroup
+pred_prod0 <- newdata %>% epred_draws(m_prod0, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
+  select(!hgravity)
+
 rm(newdata)
-
-## NULL MAX PRODUCTIVITY MODEL =====================================================================
-# weakly informative priors
-
-nullP2_priors <- default_prior(prod0_Lmin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell:DataID),
-                             data = dt_null, family = Gamma(link = 'log'))
-nullP2_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-nullP2_priors$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
-
-set.seed(1)
-mod_nullP2 <- brm(data = dt_null,
-                formula = prod0_Lmin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell:DataID),
-                family = Gamma(link = 'log'),
-                prior = nullP2_priors, iter = 5000)
-
-# Model posteriors + predictions
-nullP2_draws <- tidy_draws(mod_nullP2) %>% 
-  select(starts_with(c('b', 'sd', '.')), shape) %>% 
-  tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
-
-nullP2_draws <- nullP2_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
-                                                         .default = 'randommodel'),
-                                    prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                          vars == 'b_loghgrav2P1' ~ 'Human gravity',
-                                                          vars == 'sd_DataID__Intercept' ~ '(1|study)',
-                                                          vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
-                                                          vars == 'b_Intercept' ~ 'β0',
-                                                          .default = vars))
-
-# model partial predictions
-newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
-                               max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgrav2 = runif(500, min(vars_single$hgrav2), max(vars_single$hgrav2)))
-
-# partial effect of ∆S
-nullP2_partialpred <- newdata %>% mutate(hgrav2 = mean(vars_single$hgrav2)) %>% 
-  epred_draws(mod_nullP2, re_formula = NA, newdata = ., value = 'prod0_nullP2') %>% ungroup %>% 
-  select(!hgrav2)
 
 # NULL SPECIES =====================================================================================
 
 # Prep predictors 
-dt_sp_null <- left_join(dt_single, dt_traits[c(1,3:5)], by = 'taxaID') %>% 
-  filter(!is.na(MaxSizeTL)) %>% 
-  select(DataID, seriesID, SamplingEventID, Abundance, Length, a, b, MaxSizeTL) %>% 
-  mutate(Length = case_when(Length >= MaxSizeTL ~ .97*MaxSizeTL,
-                            .default = (Length/MaxSizeTL)*MaxSizeTL)) # turn length relative to MaxSize
+temp <- left_join(dt_single, dt_Kmax, 
+          by = c('gridcell', 'Year', 'Month', 'fishbase_valid' = 'Species'))
 
-dt_sp_null <- prod_single %>% ungroup %>% 
-  group_by(DataID, seriesID, SamplingEventID) %>% 
-  summarise(Kmax_max = max(Kmax, na.rm = T), Kmax_min = min(Kmax, na.rm = T)) %>% # one kmax for the whole assemblage
-  left_join(dt_sp_null, ., by = c('DataID', 'seriesID', 'SamplingEventID')) %>% 
-  filter(!is.na(Kmax_min)) # some species don't qualify
-summary(dt_sp_null)
+K_min <- temp %>% ungroup %>% arrange(DataID, seriesID, SamplingEventID, MaxSizeTL, Kmax) %>% 
+  group_by(DataID, seriesID, SamplingEventID, Year) %>% 
+  select(MaxSizeTL:Kmax) %>% 
+  slice_head(n = 1) %>% ungroup # minimum
+
+K_max <- temp %>% ungroup %>% arrange(DataID, seriesID, SamplingEventID, desc(MaxSizeTL), desc(Kmax)) %>% 
+  group_by(DataID, seriesID, SamplingEventID, Year) %>% 
+  select(MaxSizeTL:Kmax) %>% 
+  slice_head(n = 1) %>% ungroup # maximum
+
+dt_spmax <- left_join(dt_single, dt_Kmax, 
+                           by = c('gridcell', 'Year', 'Month', 'fishbase_valid' = 'Species')) %>% 
+  filter(!is.na(MaxSizeTL)) %>%  # remove records without max size information
+  mutate(Length = case_when(Length >= MaxSizeTL ~ 0.99,
+                            .default = Length/MaxSizeTL)) %>%  # turn length relative to MaxSize
+  select(Abundance, Length, Year, DataID, seriesID, SamplingEventID) %>% 
+  group_by(-Abundance) %>% # aggregate for simplicity since everyone will be one species anyway
+  summarise(Abundance = sum(Abundance)) %>% ungroup %>% 
+  left_join(., K_max, by = c('DataID', 'seriesID', 'SamplingEventID', 'Year')) %>% ungroup %>% 
+  arrange(DataID, seriesID, SamplingEventID, Year, Length)
+
+dt_spmax$Length <- with(dt_spmax, Length * MaxSizeTL) # scale back relative length
+
+dt_spmin <- left_join(dt_single, dt_Kmax, 
+                           by = c('gridcell', 'Year', 'Month', 'fishbase_valid' = 'Species')) %>% 
+  filter(!is.na(MaxSizeTL)) %>%
+  mutate(Length = case_when(Length >= MaxSizeTL ~ 0.99,
+                            .default = Length/MaxSizeTL)) %>%  # turn length relative to MaxSize
+  select(Abundance, Length, Year, DataID, seriesID, SamplingEventID) %>% 
+  group_by(-Abundance) %>% # aggregate for simplicity since everyone will be one species anyway
+  summarise(Abundance = sum(Abundance)) %>% ungroup %>% 
+  left_join(., K_min, by = c('DataID', 'seriesID', 'SamplingEventID', 'Year')) %>% ungroup %>% 
+  arrange(DataID, seriesID, SamplingEventID, Year, Length)
+dt_spmin$Length <- with(dt_spmin, Length * MaxSizeTL) # scale back relative length
+
+summary(dt_spmin)
+summary(dt_spmax)
 
 # species null productivity
-dt_sp_null <- dt_sp_null %>% 
-  mutate(prod0_spmax = somaGain(a, b, Lmeas = Length, Kmax = Kmax_max, Lmax = MaxSizeTL),
-         prod0_spmin = somaGain(a, b, Lmeas = Length, Kmax = Kmax_min, Lmax = MaxSizeTL)) %>% 
-  mutate(prod0_spmax = Abundance * prod_maxsp / 1000,
-         prod0_spmin = Abundance * prod_minsp / 1000) %>% 
+dt_spmin <- dt_spmin %>% 
+  mutate(prod0_spmin = somaGain(a, b, Lmeas = Length, Kmax = Kmax, Lmax = MaxSizeTL)) %>% 
+  mutate(prod0_spmin = Abundance * prod0_spmin / 1000) %>%  # scale by abundance and convert to kg
   ungroup %>% group_by(DataID, seriesID, SamplingEventID) %>% 
-  summarise(prod0_spmax = sum(prod0_spmax), prod0_spmin = sum(prod0_spmin))
+  summarise(prod0_spmin = sum(prod0_spmin))
+
+dt_spmax <- dt_spmax %>% 
+  mutate(prod0_spmax = somaGain(a, b, Lmeas = Length, Kmax = Kmax, Lmax = MaxSizeTL)) %>% 
+  mutate(prod0_spmax = Abundance * prod0_spmax / 1000) %>%  # scale by abundance and convert to kg
+  ungroup %>% group_by(DataID, seriesID, SamplingEventID) %>% 
+  summarise(prod0_spmax = sum(prod0_spmax))
 
 # area standardised
-dt_sp_null <- dt_meta %>% distinct(DataID, `Grain size`) %>% 
+dt_spmin <- dt_meta %>% distinct(DataID, `Grain size`) %>% 
   mutate(Area = str_extract(`Grain size`, '[0-9\\.]+') %>% as.numeric) %>% 
-  left_join(dt_sp_null, ., by = "DataID") %>% 
+  left_join(dt_spmin, ., by = "DataID") %>% 
   select(!`Grain size`) %>% 
-  mutate(across(starts_with('prod'), ~ .x * 10000 / Area)) %>% 
+  mutate(across(starts_with('prod'), ~ .x * 10000 / Area)) %>% # standardise by hectare
   select(!Area)
 
-dt_null <- dt_sp_null %>% ungroup %>% 
-  left_join(dt_null, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
+dt_spmax <- dt_meta %>% distinct(DataID, `Grain size`) %>% 
+  mutate(Area = str_extract(`Grain size`, '[0-9\\.]+') %>% as.numeric) %>% 
+  left_join(dt_spmax, ., by = "DataID") %>% 
+  select(!`Grain size`) %>% 
+  mutate(across(starts_with('prod'), ~ .x * 10000 / Area)) %>% # standardise by hectare
+  select(!Area)
 
-# species null model
+dt_null <- dt_spmax %>% ungroup %>% 
+  left_join(dt_null, ., by = c('DataID', 'seriesID', 'SamplingEventID')) %>% 
+  left_join(., dt_spmin, by = c('DataID', 'seriesID', 'SamplingEventID'))
+
+## Fit species null models =========================================================================
+
+load('dt_null.RData')
+require(brms)
 
 # weakly informative priors
-nullsp1_priors <- default_prior(prod_maxsp ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
-                                data = vars_single, family = Gamma(link = 'log'))
-nullsp1_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-nullsp1_priors$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
+pr_sp0_max <- default_prior(prod0_spmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+                                data = dt_null, family = Gamma(link = 'log'))
+pr_sp0_max$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
+pr_sp0_max$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
-mod_nullsp1 <- brm(data = vars_single,
-                   formula = prod_maxsp ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
+m_sp0_max <- brm(data = dt_null,
+                   formula = prod0_spmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                    family = Gamma(link = 'log'),
-                   prior = nullsp1_priors, iter = 5000)
+                   prior = pr_sp0_max, iter = 5000)
+
+save(m_sp0_max, file = 'm_sp0_max.RData')
+
+load('dt_null.RData')
+require(brms)
 
 # weakly informative priors
-nullsp2_priors <- default_prior(prod_minsp ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
-                                data = vars_single, family = Gamma(link = 'log'))
-nullsp2_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-nullsp2_priors$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
+pr_sp0_min <- default_prior(prod0_spmin ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+                                data = dt_null, family = Gamma(link = 'log'))
+pr_sp0_min$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
+pr_sp0_min$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
-mod_nullsp2 <- brm(data = vars_single,
-                   formula = prod_minsp ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell),
+m_sp0_min <- brm(data = dt_null,
+                   formula = prod0_spmin ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                    family = Gamma(link = 'log'),
-                   prior = nullsp2_priors, iter = 5000)
+                   prior = pr_sp0_min, iter = 5000)
+save(m_sp0_min, file = 'm_sp0_min.RData')
 
 # Model draws and predictions
 
 # get posterior draws
-nullsp1_draws <- tidy_draws(mod_nullsp1) %>% 
+dr_sp0_max <- tidy_draws(m_sp0_max) %>% 
   select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-nullsp1_draws <- nullsp1_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+dr_sp0_max <- dr_sp0_max %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
                                                          .default = 'randommodel'),
                                     prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                          vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                          vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
                                                           vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
                                                           vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
                                                           vars == 'Intercept' ~ 'α',
@@ -242,29 +249,29 @@ nullsp1_draws <- nullsp1_draws %>% mutate(var_type = case_when(str_detect(vars, 
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgrav2 = runif(500, min(vars_single$hgrav2), max(vars_single$hgrav2)))
+                     hgravity = runif(500, min(vars_single$hgravity), max(vars_single$hgravity)))
 
 # partial effect of ∆S
-nullsp1_partial <- newdata %>% mutate(hgrav2 = mean(vars_single$hgrav2)) %>% 
-  epred_draws(mod_nullsp1, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
-  select(!hgrav2)
-# partial effect of human gravity
-nullsp1_partial <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
-  epred_draws(mod_nullsp1, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
-  ungroup %>% select(hgrav2, prod_hgrav) %>% 
-  bind_cols(nullsp1_partial, .) %>% ungroup
+pred_sp0_max <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
+  epred_draws(m_sp0_max, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
+  select(!hgravity)
+# partial effect of Market gravity
+pred_sp0_max <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
+  epred_draws(m_sp0_max, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
+  ungroup %>% select(hgravity, prod_hgrav) %>% 
+  bind_cols(pred_sp0_max, .) %>% ungroup
 rm(newdata)
 
 
 # get posterior draws
-nullsp2_draws <- tidy_draws(mod_nullsp2) %>% 
+dr_sp0_min <- tidy_draws(m_sp0_min) %>% 
   select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-nullsp2_draws <- nullsp2_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+dr_sp0_min <- dr_sp0_min %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
                                                                .default = 'randommodel'),
                                           prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                                vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                                vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
                                                                 vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
                                                                 vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
                                                                 vars == 'Intercept' ~ 'α',
@@ -274,17 +281,17 @@ nullsp2_draws <- nullsp2_draws %>% mutate(var_type = case_when(str_detect(vars, 
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgrav2 = runif(500, min(vars_single$hgrav2), max(vars_single$hgrav2)))
+                     hgravity = runif(500, min(vars_single$hgravity), max(vars_single$hgravity)))
 
 # partial effect of ∆S
-nullsp2_partial <- newdata %>% mutate(hgrav2 = mean(vars_single$hgrav2)) %>% 
-  epred_draws(mod_nullsp2, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
-  select(!hgrav2)
-# partial effect of human gravity
-nullsp2_partial <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
-  epred_draws(mod_nullsp2, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
-  ungroup %>% select(hgrav2, prod_hgrav) %>% 
-  bind_cols(nullsp2_partial, .) %>% ungroup
+pred_sp0_min <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
+  epred_draws(m_sp0_min, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
+  select(!hgravity)
+# partial effect of Market gravity
+pred_sp0_min <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
+  epred_draws(m_sp0_min, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
+  ungroup %>% select(hgravity, prod_hgrav) %>% 
+  bind_cols(pred_sp0_min, .) %>% ungroup
 rm(newdata)
 
 # NULL ABUNDANCE ===================================================================================
@@ -295,14 +302,9 @@ N <- dt_single %>% select(DataID, seriesID, SamplingEventID, Abundance) %>%
 
 # all abundance = 1
 
-dt_abund0 <- dt_single %>% 
-  select(DataID, seriesID, fishbase_valid, SamplingEventID, Length) %>% 
-  rename(Species = fishbase_valid) %>% distinct
-
-dt_abund0 <- left_join(dt_abund0, prod_single, by = c('Species', 'DataID', 'seriesID', 'SamplingEventID'), 
-                          na_matches = 'na', unmatched = 'error', relationship = 'many-to-one') %>% 
-  select(!c(Diet, Position))
-summary(dt_abund0)
+dt_abund0 <- dt_single %>% select(!Abundance) %>% distinct %>% 
+  left_join(., dt_Kmax, by = c('gridcell', 'Year', 'Month', 'fishbase_valid' = 'Species')) %>% 
+  filter(!is.na(MaxSizeTL))
 
 dt_abund0 <- dt_abund0 %>% filter(!is.na(Kmax)) %>% 
   mutate(Length = case_when(.default = Length,
@@ -311,9 +313,9 @@ dt_abund0 <- dt_abund0 %>% filter(!is.na(Kmax)) %>%
 # lowers and uppers refer to the Kmax value used!
 # not necessarily the lower or upper of that metric
 dt_abund0 <- dt_abund0 %>% 
-  mutate(prod0_Amin = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax),
-         prod0_Amin_l = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
-         prod0_Amin_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq)
+  mutate(prod0_a = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax),
+         prod0_a_l = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_lowq),
+         prod0_a_u = somaGain(a, b, Lmeas = Length, Lmax = MaxSizeTL, Kmax = Kmax_uppq)
   )
 
 summary(dt_abund0)
@@ -342,28 +344,31 @@ dt_null <- dt_abund0 %>% select(!Area) %>%
 
 ## Fit model 
 
-abund0_priors <- default_prior(prod0_Amin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell:DataID),
+require(brms)
+load('dt_null.RData')
+
+pr_abund0 <- default_prior(prod0_a ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                                data = dt_null, family = Gamma(link = 'log'))
-abund0_priors$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-abund0_priors$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
+pr_abund0$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
+pr_abund0$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
-mod_abund0 <- brm(data = dt_null,
-                  formula = prod0_Amin ~ log(S) + log(hgrav2 + 1) + (1|DataID) + (1|gridcell:DataID),
+m_abund0 <- brm(data = dt_null,
+                  formula = prod0_a ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = Gamma(link = 'log'),
-                  prior = abund0_priors, iter = 5000)
-# save(mod_abund0, file = 'mod_null_A.RData')
+                  prior = pr_abund0, iter = 5000)
+save(m_abund0, file = 'm_abund0.RData')
 
 # posteriors and predictions
 
-abund0_draws <- tidy_draws(mod_abund0) %>% 
+dr_abund0 <- tidy_draws(m_abund0) %>% 
   select(starts_with(c('b', 'sd', '.')), shape) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-abund0_draws <- abund0_draws %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+dr_abund0 <- dr_abund0 %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
                                                                .default = 'randommodel'),
                                           prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                                vars == 'b_loghgrav2P1' ~ 'Human gravity',
+                                                                vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
                                                                 vars == 'sd_DataID__Intercept' ~ '(1|study)',
                                                                 vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
                                                                 vars == 'b_Intercept' ~ 'β0',
@@ -372,8 +377,8 @@ abund0_draws <- abund0_draws %>% mutate(var_type = case_when(str_detect(vars, 'l
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgrav2 = mean(vars_single$hgrav2))
+                     hgravity = mean(vars_single$hgravity))
 
 # partial effect of ∆S
-abund0_partial <- epred_draws(mod_abund0, re_formula = NA, newdata = newdata, value = 'prod_S') %>% ungroup %>% 
-  select(!hgrav2)
+pred_abund0 <- epred_draws(m_abund0, re_formula = NA, newdata = newdata, value = 'prod_S') %>% ungroup %>% 
+  select(!hgravity)

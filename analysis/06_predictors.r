@@ -62,3 +62,11 @@ vars_single <- left_join(vars_single, st_drop_geometry(grid_sf), by = 'gridcell'
 vars_rare <- vars_rare %>% ungroup
 vars_single <- vars_single %>% ungroup
 
+# add N
+
+vars_single <- dt_single %>% group_by(DataID, seriesID, SamplingEventID) %>% summarise(N = sum(Abundance)) %>% 
+  left_join(vars_single, ., by = c('DataID', 'seriesID', 'SamplingEventID'))
+
+# add sample completeness
+
+vars_single <- left_join(vars_single, dt_complete, by = c('DataID', 'seriesID', 'SamplingEventID'))
