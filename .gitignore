@@ -3,9 +3,6 @@
 *._*
 Icon?
 
-# ignore some data files
-*.nc
-
 # History files
 .Rhistory
 .Rapp.history
@@ -31,4 +28,3 @@ Icon?
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
-
