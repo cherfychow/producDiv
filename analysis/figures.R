@@ -20,10 +20,6 @@ style <- theme_classic(base_size = 15, base_family = 'Lato') +
 single_x <- c(1,5,10,50,100,150)
 single_y <- c(0,0.001,.01, .1, 1, 10, 100, 500)
 
-# to sort in geographical order
-regions <- c("w_indian", "e_indian", "central_indopacific", "s_china", "aus_indopacific", 
-"central_pacific", "outer_pacific", "outer_e_pacific", "e_pacific",
-"caribbean_w_atl", "wc_atlantic", "e_atlantic")
 
 # Dataset map ---------------------------------------------------------------------------------
 
@@ -93,20 +89,11 @@ f_map <- ggplot() +
   guides(fill = 'none') +
   scale_fill_cherulean(palette = 'cheridis', discrete = T, alpha = 0.4)
 
-f_map_eco <- ggplot() +
-  geom_sf(data = world, color='grey75', fill='grey95') +
-  geom_sf(data = ecoR, aes(fill = region)) +
-  geom_sf(data = points, shape = 21, size = 1.5, fill = 'white') +
-  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
-  theme_minimal(base_size = 13, base_family = 'Helvetica') +
-  theme(legend.position = 'bottom') +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T)
-
-f_map_eco / f_map
 
 
-
-# Spatial model ====================================================================================
+# ==============================================================================
+# Figure 2: Spatial model
+# ==============================================================================
 
 # Base single year data
 
@@ -135,6 +122,10 @@ f_spatial <- f_spatial_dt +
                         prod_S = quantile(prod_S, 0.5)), 
             aes(x = S, y = prod_S), 
             colour = '#000', linewidth = 1)
+
+# ==============================================================================
+# Figure 3: spatial model, quantile and nulls
+# ==============================================================================
 
 # quantile regression
 f_spatial2 <- f_spatial_dt + 
@@ -224,15 +215,75 @@ f_spatial3 <- f_spatial_dt +
 
   theme(axis.text.x = element_blank()) + labs(x = NULL)
 
-f_spatial
-
-f_spatial2 + f_spatial3 + plot_layout(guides = 'collect')
-
-# null model comparisons
+(f_spatial | (f_spatial2 / f_spatial3)) + plot_layout(ncol = 2, widths = c(2,1))
 
 
+# ==============================================================================
+# Figure 4: Biogeographical region patterns
+# ==============================================================================
 
-# Temporal model prediction ========================================================================
+unique(vars_single$biogeo)
+
+# to sort in geographical order
+regions <- c("w_indian", "e_indian", "central_indopacific", "s_china", "aus_indopacific", 
+"central_pacific", "outer_pacific", "outer_e_pacific", "e_pacific",
+"caribbean_w_atl", "wc_atlantic", "e_atlantic")
+
+vars_single$biogeo <- factor(vars_single$biogeo, levels = regions)
+pred_biogeo$biogeo <- factor(pred_biogeo$biogeo, levels = regions)
+ecoR$region <- factor(ecoR$region, levels = regions)
+ecoR <- ecoR %>% st_make_valid %>% st_break_antimeridian(., lon_0 = 160)
+
+# biogeographical map
+
+ggplot() +
+  geom_sf(data = world, color='grey75', fill='grey95') +
+  geom_sf(data = ecoR, 
+          aes(fill = region), colour = '#333') +
+  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
+  theme_minimal(base_family = 'Lato') + guides(fill = 'none') + 
+  theme(panel.grid.minor.x = element_blank()) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T)
+
+f_geo <- ggplot(data = vars_single) +
+  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
+  geom_point(aes(x = S, y = prod_kg, colour = biogeo), 
+             shape = 21, size = 1.5, alpha = 0.5, fill = 'transparent') +
+  
+  geom_ribbon(data = pred_biogeo %>% ungroup %>% group_by(biogeo, S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr, group = biogeo), 
+              fill = 'transparent', colour = '#000', linetype = 'dashed') +
+  
+  # overall S effect line
+  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = '#000', linewidth = 0.75, alpha = 0.4) +
+  
+  geom_line(data = pred_biogeo %>% ungroup %>% group_by(biogeo, S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S, group = biogeo), 
+            colour = '#000', linewidth = 0.75) +
+
+  scale_colour_cherulean(palette = 'cheridis', discrete = T) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
+  scale_x_log10() + scale_y_log10() +
+  guides(colour = 'none', fill = 'none') +
+  style + facet_wrap(~biogeo)
+
+  f_geomap
+  f_geo
+
+# ==============================================================================
+# Figure 5: Temporal trends and model
+# ==============================================================================
 
 f_time <- ggplot(data = vars_time_long) +
   labs(x = "∆log S", y = bquote("∆log Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
@@ -285,31 +336,9 @@ f_time <- ggplot(data = vars_time_long) +
 #   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
 # f_time
 
-## Posterior distributions =========================================================================
-
-f_time_post1 <- ggplot(dr_time_full %>% filter(var_type == 'fixed')) +
-  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
-            normalize = 'groups', .width = .95, colour = '#000', slab_linewidth = 0.5) +  
-  scale_fill_manual(values = '#92d4c7', na.value = '#fff') +
-  stat_spike(aes(x = values, y = prettyvar, ), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
-  labs(x = NULL, y = NULL) + style +
-  guides(fill = 'none')
-
-f_time_post2 <- ggplot(dr_time_full %>% filter(var_type == 'randommodel')) +
-  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
-            normalize = 'groups', .width = .95, colour = '#000', slab_linewidth = 0.5) +  
-  scale_fill_manual(values = '#92d4c7', na.value = '#fff') +
-  stat_spike(aes(x = values, y = prettyvar), at = 'median',
-             normalize = 'groups', size = 0, colour = '#333660') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
-  labs(x = NULL, y = NULL) + style +
-  guides(fill = 'none')
-
-f_time_post <- f_time_post1 / f_time_post2 + plot_layout(heights = c(2, 5))
-f_time_post
-
+# ------------------------------------------------------------------------------
+# Temporal trajectories
+# ------------------------------------------------------------------------------
 
 # Change trajectory bars ============================================================================
 
@@ -352,6 +381,34 @@ ggplot() +
   scale_fill_manual(values = c('#1c5dac','#60dcac')) +
   scale_x_log10() + scale_y_log10() + style + theme(legend.position = 'bottom') +
   facet_wrap(~quad)
+
+# ==============================================================================
+# Posterior distributions
+# ==============================================================================
+
+f_time_post1 <- ggplot(dr_time_full %>% filter(var_type == 'fixed')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95, colour = '#000', slab_linewidth = 0.5) +  
+  scale_fill_manual(values = '#92d4c7', na.value = '#fff') +
+  stat_spike(aes(x = values, y = prettyvar, ), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_time_post2 <- ggplot(dr_time_full %>% filter(var_type == 'randommodel')) +
+  stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
+            normalize = 'groups', .width = .95, colour = '#000', slab_linewidth = 0.5) +  
+  scale_fill_manual(values = '#92d4c7', na.value = '#fff') +
+  stat_spike(aes(x = values, y = prettyvar), at = 'median',
+             normalize = 'groups', size = 0, colour = '#333660') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+  labs(x = NULL, y = NULL) + style +
+  guides(fill = 'none')
+
+f_time_post <- f_time_post1 / f_time_post2 + plot_layout(heights = c(2, 5))
+f_time_post
+
 
 
 # NULL MODEL  ======================================================================================
@@ -648,38 +705,7 @@ f_geo_post
 ## Partial predictions
 
 # split by bioregion
-f_geo <- ggplot(data = vars_single) +
-  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
-  geom_point(aes(x = S, y = prod_kg, colour = biogeo), 
-             shape = 21, size = 1.5, alpha = 0.5, fill = 'transparent') +
-  
-  geom_ribbon(data = geo_partialpred %>% ungroup %>% group_by(biogeo, S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr, group = biogeo), 
-              fill = 'transparent', colour = '#000', linetype = 'dashed') +
-  
-  # overall S effect line
-  geom_line(data = spatial_partialpred %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = '#000', linewidth = 0.75, alpha = 0.4) +
-  
-  geom_line(data = geo_partialpred %>% ungroup %>% group_by(biogeo, S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S, group = biogeo), 
-            colour = '#000', linewidth = 0.75) +
 
-  scale_colour_cherulean(palette = 'cheridis', discrete = T) +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
-  scale_x_log10() + scale_y_log10() +
-  guides(colour = 'none', fill = 'none') +
-  style + facet_wrap(~biogeo)
 
 ggplot(data = vars_single) +
   labs(x = 'log(S)', y = bquote("log Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
@@ -819,6 +845,9 @@ f_time <- f_time_x + plot_spacer() + f_time_1 + f_time_y +
 f_time
 
 
+# ==============================================================================
+# Spatiotemporal figure
+# ==============================================================================
 
 
 # NULL SPECIES MODEL ===============================================================================

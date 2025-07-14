@@ -25,7 +25,7 @@ grid_sf$hgravity[is.na(grid_sf$hgravity)] <- grid_sf$grav_nc[is.na(grid_sf$hgrav
 grid_sf <- grid_sf %>% rename(gridcell = seqnum)
 
 # biogeography regions
-ecoR <- st_read('src/biogeo_regions.shp')
+ecoR <- st_read('../src/biogeographical_regions/biogeo_regions.shp')
 st_crs(ecoR) <- 4326
 ecoR <- ecoR %>% st_make_valid(.) %>% st_break_antimeridian(., lon_0 = 160)
 biogeo_match <- st_nearest_feature(grid_sf, ecoR)
