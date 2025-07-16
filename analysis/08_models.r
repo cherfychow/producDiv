@@ -46,6 +46,26 @@ dr_spatial <- dr_spatial %>% mutate(var_type = case_when(str_detect(vars, 'b\\_l
                                                         vars == 'b_Intercept' ~ 'β0',
                                                         .default = vars))
 
+# get posteriors for each biogeographic region (level)
+
+dr_biogeo <- ranef(m_spatial, summary = F, groups = 'biogeo')
+dr_geo_b0 <- dr_biogeo[[1]][,,1]
+dr_geo_S <- dr_biogeo[[1]][,,2]
+rm(dr_biogeo)
+
+# these only give the sigma for the random effects
+
+dr_geo_b0 <- as_tidytable(dr_geo_b0) %>% 
+  tidyr::pivot_longer(cols = everything(), names_to = 'biogeo', values_to = 'value') %>%
+  mutate(value = -3.52 + value) # intercepts for each level
+
+dr_geo_S <- as_tidytable(dr_geo_S) %>% 
+  tidyr::pivot_longer(cols = everything(), names_to = 'biogeo', values_to = 'value') %>%
+  mutate(value = 1.46 + value)
+
+dr_geo_b0 %>% group_by(biogeo) %>% summarise(median = median(value))
+dr_geo_S %>% group_by(biogeo) %>% summarise(median = median(value))
+
 # model partial predictions
 temp <- vars_single %>% ungroup %>% group_by(biogeo) %>% 
   summarise(minS = min(S), maxS = max(S),
@@ -62,7 +82,6 @@ for (i in 1:nrow(temp)) {
                          hgravity = mean(vars_single$hgravity))
   }
 }
-
 
 # partial effect of ∆S d
 pred_biogeo <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
