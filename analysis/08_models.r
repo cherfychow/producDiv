@@ -190,7 +190,7 @@ m_timeN <- brm(data = vars_time_long,
                   formula = prod_slope ~ S_slope + sst_slope + N_slope + log(hgravity + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = gaussian(),
                   prior = pr_timeN, iter = 8000)
-save(m_timeN, file = 'm_timeN.RData')
+save(m_timeN, file = 'm_timeN2.RData')
 
 # posteriors
 

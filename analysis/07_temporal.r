@@ -159,21 +159,26 @@ dt_sst_t <- dt_rareass %>% select(DataID, seriesID, SamplingEventID, gridcell, Y
 
 vars_time_long$sst_slope <- NA
 vars_time_long$sst_se <- NA
-mod_sst <- as.list(rep(NA, nrow(vars_time_long)))
+m_sst <- as.list(rep(NA, nrow(vars_time_long)))
 
 for (i in 1:nrow(vars_time_long)) {
   
   temp <- dt_sst_t %>%
     filter(DataID == vars_time_long$DataID[i], seriesID == vars_time_long$seriesID[i])
 
-  mod_sst[[i]] <- glm(data = temp, sst ~ Year, family = Gamma(link = 'log'))
+  m_sst[[i]] <- glm(data = temp, sst ~ Year, family = gaussian())
   
   # store coefficients
-  vars_time_long$sst_slope[i] <- coefficients(mod_sst[[i]])[2] # slope
-  vars_time_long$sst_se[i] <- summary(mod_sst[[i]])$coefficients[2,2] # slope std error
+  vars_time_long$sst_slope[i] <- coefficients(m_sst[[i]])[2] # slope
+  vars_time_long$sst_se[i] <- summary(m_sst[[i]])$coefficients[2,2] # slope std error
   print(paste0('Time series ', i, ' complete of ', nrow(vars_time_long)))
   
 }
+save(m_sst, file = 'm_sst_gaussian.RData')
+
+ggplot(data = dt_sst_t) +
+geom_line(aes(x = Year, y = sst, group = seriesID), linewidth = 0.25, alpha = 0.3) +
+facet_wrap(~DataID) + theme_bw()
 
 ## ∆N ==============================================================================================
 temp <- dt_rareass %>% select(DataID, seriesID, SamplingEventID, Abundance, Year) %>% 
