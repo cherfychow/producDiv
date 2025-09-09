@@ -1,12 +1,21 @@
 
 
 # ProducDiv
-# Length binning sensitivity test
+# Sensitivity tests
 
 require(tidytable)
 require(rfishprod)
 require(ggplot2)
 require(patchwork)
+require(lme4)
+require(dplyr)
+require(MuMIn)
+
+load('model_vars.RData')
+
+# ==================================================================================================
+# Length binning sensitivity
+# ==================================================================================================
 
 dt_length <- dt_rareass %>% ungroup %>%
   # match Kmax
@@ -48,48 +57,66 @@ dt_length$delta_length_rel <- with(dt_length, Length/MaxSizeTL)
 
 dt_length <- dt_length %>% mutate(across(contains('prod'), ~.x / 1000)) # to kg/day
 
+# --------------------------------------------------------------------------------------------------
+#  Sensitivity models
+# --------------------------------------------------------------------------------------------------
 
-f_Lsens_pair <- ggplot(data = dt_length) +
-  geom_linerange(aes(xmin = act_prod_l*1000, xmax = act_prod_u*1000, y = bin_prod*1000), 
-                 linewidth = 0.25, colour = '#666', alpha = 0.1) +
-  geom_linerange(aes(ymin = bin_prod_l*1000, ymax = bin_prod_u*1000, x = act_prod*1000), 
-                 linewidth = 0.25, colour = '#666', alpha = 0.1) +
-  geom_point(aes(x = act_prod*1000, y = bin_prod*1000), 
-             shape = 21, size = 2, fill = '#FFF', alpha = 0.6) +
-  labs(x = bquote('Productivity'['actual']~' (g/day)'),
-       y = bquote('Productivity'['bin']~' (g/day)')) +
-  style + scale_x_log10() + scale_y_log10()
+# the relationship between actual and binned productivity
+m_L1 <- glm(data = dt_length, bin_prod ~ log(act_prod), family = Gamma(link = 'log'))
 
-f_Lsens_delta <- ggplot(data = dt_length) +
-  geom_hline(aes(yintercept = 1), linetype = 'dashed', colour = '#AAA') +
-  geom_point(aes(x = delta_length, y = delta_prod*1000 + 1),
-             shape = 21, size = 2, fill = '#FFF', alpha = 0.6) +
-  labs(x = '∆Length (cm)',
-       y = '∆Productivity (g/day)') +
-  style + scale_y_log10()
+# what drives binned length productivity differences?
+# Species size? Individual size? Individual size relative to species size?
+dt_length$rel_Length <- with(dt_length, Length/MaxSizeTL)
+tempdt <- dt_length %>% select(delta_prod, MaxSizeTL, Length, rel_Length, delta_length) %>%
+  filter_all(all_vars(. > 0))
 
-f_Lsens_rel <- ggplot(data = dt_length) +
-  geom_point(aes(x = delta_length_rel, y = delta_prod*1000),
-             shape = 21, size = 2, fill = '#FFF', alpha = 0.6) +
-  labs(x = bquote('Length/L'['max']),
-       y = '∆Productivity (g/day)') +
-  style + scale_y_log10()
+set.seed(24)
+m_L <- glm(data = tempdt, 
+  delta_prod ~ log(MaxSizeTL) + log(Length) + rel_Length + log(delta_length),
+  family = Gamma(link = 'log'), na.action = na.fail)
 
-f_Lsens_max <-  ggplot(data = dt_length) +
-  geom_point(aes(x = MaxSizeTL, y = delta_prod*1000),
-             shape = 21, size = 2, fill = '#FFF', alpha = 0.6) +
-  labs(x = bquote('L'['max']),
-       y = '∆Productivity (g/day)') +
-  style + scale_y_log10() + scale_x_log10()
+# dredge to find predictors
+m_L_dredge <- dredge(m_L)
+m_L_dredge$model <- rownames(m_L_dredge) %>% as.numeric
+rownames(m_L_dredge) <- NULL
+m_L_dredge <- m_L_dredge %>% arrange(model)
 
-f_Lsens_pair + f_Lsens_delta + f_Lsens_rel + f_Lsens_max
+# best model didn't have length
+set.seed(24)
+m_L <- glm(data = tempdt, 
+  delta_prod ~ log(MaxSizeTL) + rel_Length + log(delta_length),
+  family = Gamma(link = 'log'))
+
+# --------------------------------------------------------------------------------------------------
+#  Generate predictions
+# --------------------------------------------------------------------------------------------------
+
+# actual vs binned prod
+pred_L1 <- tidytable(act_prod = seq(min(dt_length$act_prod), max(dt_length$act_prod), length.out = 50))
+temp <- predict(m_L1, newdata = pred_L1, se.fit = T, type = 'response')
+pred_L1$fit <- temp$fit
+pred_L1$se <- temp$se.fit
+
+# drivers of productivity differences
+pred_length <- tempdt %>% select(delta_length, rel_Length, MaxSizeTL)
+
+temp <- tempdt %>% mutate(across(-delta_length, mean)) %>% 
+  predict(m_L, newdata = ., se.fit = T, type = 'response')
+pred_length$fit_deltaL <- temp$fit
+pred_length$se_deltaL <- temp$se.fit
+
+temp <- tempdt %>% mutate(across(-rel_Length, mean)) %>% 
+  predict(m_L, newdata = ., se.fit = T, type = 'response')
+pred_length$fit_relL <- temp$fit
+pred_length$se_relL <- temp$se.fit
+
+temp <- tempdt %>% mutate(across(-MaxSizeTL, mean)) %>% 
+  predict(m_L, newdata = ., se.fit = T, type = 'response')
+pred_length$fit_Lmax <- temp$fit
+pred_length$se_Lmax <- temp$se.fit
 
 
 # Sample completeness ==============================================================================
-
-require(lme4)
-require(dplyr)
-load('model_vars.RData')
 
 m_spatial_comp <- glmer(data = vars_single %>% filter(compness > 0.8),
                        prod_kg ~ log(S) + log(hgravity + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
@@ -103,32 +130,3 @@ temp <- predict(m_spatial_comp, newdata = pred_spatial_comp, re.form = NA, se.fi
 pred_spatial_comp$prod_pred <- exp(temp$fit)
 pred_spatial_comp$prod_lwr <- exp(temp$fit - 1.96*temp$se.fit)
 pred_spatial_comp$prod_upr <- exp(temp$fit + 1.96*temp$se.fit)
-
-# histogram of sample completeness
-(ggplot(data = dt_complete) +
-   labs(x = 'Sample completeness', y = 'Count') +
-   geom_histogram(aes(x = compness), colour = '#333', fill = 'transparent') + style) +
-  
-  (f_spatial_dt +
-     stat_density_2d(data = vars_single %>% filter(compness < 0.8), aes(x = S, y = prod_kg), colour = '#000', alpha = 0.5) +
-     scale_colour_cherulean(palette = 'cheridis', discrete = F, name = 'Completeness') +
-     theme(legend.position = 'bottom'))
-
-# comparing model predictions
-f_spatial_dt +
-  geom_ribbon(data = pred_spatial_comp, aes(x = S, ymin = prod_lwr, ymax = prod_upr), 
-              fill = 'blue', alpha = 0.3) +
-  geom_line(data = pred_spatial_comp, aes(x = S, y = prod_pred), colour = 'blue') +
-  geom_ribbon(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr), 
-              fill = 'transparent', colour = '#000', linetype = 'dashed') +
-  
-  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = '#000', linewidth = 1)

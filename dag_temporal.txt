@@ -1,0 +1,98 @@
+dag {
+
+
+
+bb="-4.873,-5.187,5.286,5.164"
+
+
+"climate change" [latent,pos="3.383,-1.525"]
+
+
+"coral cover" [latent,pos="-2.918,-1.502"]
+
+
+"fishing pressure" [adjusted,pos="-2.089,0.954"]
+
+
+"local extinction" [latent,pos="-1.050,-2.574"]
+
+
+"range shifts" [latent,pos="0.774,-4.729"]
+
+
+"size structure" [latent,pos="-0.928,2.439"]
+
+
+"∆N" [adjusted,pos="1.105,3.109"]
+
+
+"∆Prod" [outcome,pos="1.594,-0.843"]
+
+
+"∆S" [exposure,pos="-1.045,-0.837"]
+
+
+"∆SST_alpha" [adjusted,pos="2.816,1.301"]
+
+
+"∆SST_gamma" [latent,pos="2.231,-3.289"]
+
+
+emigration [latent,pos="0.425,-2.775"]
+
+
+immigration [latent,pos="-2.054,-3.177"]
+
+
+"climate change" -> "∆SST_alpha"
+
+
+"climate change" -> "∆SST_gamma"
+
+
+"coral cover" -> "∆S"
+
+
+"fishing pressure" -> "size structure"
+
+
+"fishing pressure" -> "∆S"
+
+
+"local extinction" -> "∆N"
+
+
+"local extinction" -> "∆S"
+
+
+"range shifts" -> "local extinction"
+
+
+"range shifts" -> emigration
+
+
+"range shifts" -> immigration
+
+
+"size structure" -> "∆Prod"
+
+
+"∆N" -> "∆Prod"
+
+
+"∆S" -> "∆Prod"
+
+
+"∆SST_alpha" -> "∆Prod"
+
+
+"∆SST_gamma" -> "range shifts"
+
+
+emigration -> "∆S"
+
+
+immigration -> "∆S"
+
+
+}

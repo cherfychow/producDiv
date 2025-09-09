@@ -1,0 +1,107 @@
+dag {
+
+
+
+bb="-3.522,-4.515,3.23,3.63"
+
+
+"bioavailable energy" [latent,pos="0.443,-3.061"]
+
+
+"complementarity/competition" [latent,pos="0.973,-1.548"]
+
+
+"fishing pressure" [adjusted,pos="-0.553,-0.007"]
+
+
+"size structure" [latent,pos="-0.016,1.560"]
+
+
+"species diversity" [exposure,pos="0.979,1.547"]
+
+
+"structural complexity" [latent,pos="1.880,1.540"]
+
+
+"total abundance" [pos="0.473,-0.027"]
+
+
+"total biomass" [pos="-1.052,-1.521"]
+
+
+"unknown abiotic" [latent,pos="0.176,-2.258"]
+
+
+SST [pos="-0.569,-3.061"]
+
+
+biogeography [pos="1.506,-0.027"]
+
+
+productivity [outcome,pos="-0.052,-1.521"]
+
+
+"bioavailable energy" -> "complementarity/competition"
+
+
+"bioavailable energy" -> "total abundance"
+
+
+"bioavailable energy" -> "total biomass"
+
+
+"complementarity/competition" -> productivity
+
+
+"fishing pressure" -> "size structure"
+
+
+"fishing pressure" -> "species diversity"
+
+
+"fishing pressure" -> productivity
+
+
+"size structure" -> productivity
+
+
+"species diversity" -> "complementarity/competition"
+
+
+"structural complexity" -> "species diversity"
+
+
+"total abundance" -> "complementarity/competition"
+
+
+"total abundance" -> "size structure"
+
+
+"total abundance" -> "total biomass"
+
+
+"total abundance" -> productivity
+
+
+"unknown abiotic" -> "bioavailable energy"
+
+
+"unknown abiotic" -> "complementarity/competition"
+
+
+"unknown abiotic" -> SST
+
+
+"unknown abiotic" -> productivity
+
+
+SST -> productivity
+
+
+biogeography -> "species diversity"
+
+
+productivity -> "total biomass"
+
+
+}

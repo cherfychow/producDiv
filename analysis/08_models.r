@@ -5,9 +5,9 @@
 require(tidytable)
 require(brms)
 require(tidybayes)
+require(stringr)
 
-
-# MODEL 1: SPATIAL BIOGEO ==================================================================================
+# MODEL 1: SPATIAL ==================================================================================
 # what is the diversity-productivity relationship like across space
 
 # weakly informative priors
@@ -23,7 +23,7 @@ m_spatial <- brm(data = vars_single,
                  formula = prod_kg ~ log(S) + log(hgravity + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                  family = Gamma(link = 'log'),
                  prior = pr_spatial, iter = 5000)
-save(m_spatial, file = 'm_spatial2.RData')
+# save(m_spatial, file = 'm_spatial2.RData')
 print('Geographical model saved')
 
 ## POSTERIORS PREDICTIONS ==========================================================================
@@ -32,19 +32,22 @@ print('Geographical model saved')
 dr_spatial <- tidy_draws(m_spatial) %>% 
   select(starts_with(c('b', 'sd')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
+unique(dr_spatial$vars)
 
-dr_spatial <- dr_spatial %>% mutate(var_type = case_when(str_detect(vars, 'b\\_log|sd\\_biogeo\\_\\_logS') ~ 'main',
-                                                       .default = 'randommodel'),
-                                  prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                        vars == 'b_loghgravityP3.90505eM05' ~ 'Market gravity',
-                                                        vars == 'sd_biogeo__logS' ~ '(S|Biogeo)',
-                                                        vars == 'sd_biogeo__Intercept' ~ '(1|Biogeo)',
-                                                        vars == 'sd_DataID__Intercept' ~ '(1|study)',
-                                                        vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
-                                                        vars == 'sd_gridcell__Intercept' ~ '(1|location)',
-                                                        vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
-                                                        vars == 'b_Intercept' ~ 'β0',
-                                                        .default = vars))
+dr_spatial <- dr_spatial %>% 
+  mutate(var_type = case_when(str_detect(vars, 'b\\_log|sd\\_biogeo\\_\\_logS') ~ 'main', .default = 'randommodel'),
+        prettyvar = case_when(vars == 'b_logS' ~ 'log(S)',
+                              vars == 'b_loghgravityP3.90505eM05' ~ 'log(market gravity)',
+                              vars == 'sd_biogeo__logS' ~ '(S|biogeo)',
+                              vars == 'sd_biogeo__Intercept' ~ '(1|biogeo)',
+                              vars == 'sd_DataID__Intercept' ~ '(1|study)',
+                              vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                              vars == 'sd_gridcell__Intercept' ~ '(1|location)',
+                              vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
+                              vars == 'b_Intercept' ~ 'β0',
+                              .default = vars)) %>%
+  filter(!vars == 'Intercept') # don't want to show everything that model generates
+                                      
 
 # get posteriors for each biogeographic region (level)
 
@@ -112,23 +115,49 @@ spatial_resid <- pred_spatial %>% group_by(S) %>% summarise(prod_S = median(prod
   left_join(spatial_resid, ., by = 'S') %>% distinct
 spatial_resid <- spatial_resid %>% mutate(resid = prod_kg - prod_S)
 
-# SPATIAL BIOGEO ALT with N ========================================================================
-# with abundance included
+# SPATIAL ALTERNATE ================================================================================
+# with abundance
 
 # weakly informative priors
 pr_spatialN <- default_prior(prod_kg ~ log(S) + log(hgravity + .0000390505) + log(N) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
-                            data = vars_single,
-                            family = Gamma(link = 'log'))
+                             data = vars_single,
+                             family = Gamma(link = 'log'))
 pr_spatialN$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
 pr_spatialN$prior[3] <- 'normal(0.1, 3)' # abundance effect, slight positive
 pr_spatialN$prior[4] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_spatialN <- brm(data = vars_single,
-                 formula = prod_kg ~ log(S) + log(hgravity + .0000390505) + log(N) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
-                 family = Gamma(link = 'log'),
-                 prior = pr_spatialN, iter = 5000)
+                  formula = prod_kg ~ log(S) + log(hgravity + .0000390505) + log(N) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                  family = Gamma(link = 'log'),
+                  prior = pr_spatialN, iter = 5000)
 print('Spatial with N model saved')
+
+
+
+## POSTERIORS PREDICTIONS ==========================================================================
+
+# get posterior draws
+dr_spatialN <- tidy_draws(m_spatialN) %>% 
+  select(starts_with(c('b', 'sd')), shape, Intercept) %>% 
+  tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
+unique(dr_spatialN$vars)
+
+dr_spatialN <- dr_spatialN %>% 
+  mutate(var_type = case_when(str_detect(vars, 'b\\_log|sd\\_biogeo\\_\\_logS') ~ 'main',
+                              .default = 'randommodel'),
+        prettyvar = case_when(vars == 'b_logS' ~ 'log(S)',
+                              vars == 'b_logN' ~ 'log(N)',
+                              vars == 'b_loghgravityP3.90505eM05' ~ 'log(Market gravity)',
+                              vars == 'sd_biogeo__logS' ~ '(S|biogeo)',
+                              vars == 'sd_biogeo__Intercept' ~ '(1|biogeo)',
+                              vars == 'sd_DataID__Intercept' ~ '(1|study)',
+                              vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                              vars == 'sd_gridcell__Intercept' ~ '(1|location)',
+                              vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
+                              vars == 'b_Intercept' ~ 'β0',
+                              .default = vars)) %>%
+  filter(!vars == 'Intercept')
 
 # MODEL 2: TEMPORAL ================================================================================
 # does proportional diversity change result in proportional productivity change?
@@ -178,7 +207,7 @@ pred_time_full <- newdata %>%
 #   ungroup %>% select(hgravity, deltaProd_hgrav) %>% 
 #   bind_cols(pred_time_full, .) %>% ungroup
 
-# Alternate temporal model: with N + SST ===========================================================
+# Temporal model: with N + SST ===========================================================
 
 pr_timeN <- default_prior(prod_slope ~ S_slope + sst_slope + N_slope + log(hgravity + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                              data = vars_time_long, family = gaussian())
@@ -197,11 +226,13 @@ save(m_timeN, file = 'm_timeN2.RData')
 dr_timeN <- tidy_draws(m_timeN) %>% 
   select(starts_with(c('b', 'sd', '.')), sigma) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
-
-dr_timeN <- dr_timeN %>% mutate(var_type = case_when(str_detect(vars, 'log|delta') ~ 'fixed',
+unique(dr_timeN$vars)
+dr_timeN <- dr_timeN %>% mutate(var_type = case_when(str_detect(vars, 'log|slope') ~ 'fixed',
                                                              .default = 'randommodel'),
-                                        prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log (S)',
-                                                              vars == 'b_loghgravityP390505' ~ 'Market gravity',
+                                        prettyvar = case_when(vars == 'b_S_slope' ~ '∆log(S)',
+                                                              vars == 'b_sst_slope' ~ '∆SST',
+                                                              vars == 'b_N_slope' ~ '∆log(N)',
+                                                              vars == 'b_loghgravityP3.90505eM05' ~ 'log(market gravity)',
                                                               vars == 'sd_DataID__Intercept' ~ '(1|study)',
                                                               vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
                                                               vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
@@ -230,17 +261,18 @@ m_time_flux <- brm(data = vars_time,
 dr_time_flux <- tidy_draws(m_time_flux) %>% 
   select(starts_with(c('b', 'sd', '.')), sigma) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
+unique(dr_time_flux$vars)
 
-dr_time_flux <- dr_time_flux %>% mutate(var_type = case_when(str_detect(vars, 'log|delta') ~ 'fixed',
-                                                               .default = 'randommodel'),
-                                          prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log (S)',
-                                                                vars == 'b_loghgravityP390505' ~ 'Market gravity',
-                                                                vars == 'sd_DataID__Intercept' ~ '(1|study)',
-                                                                vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
-                                                                vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
-                                                                vars == 'sigma' ~ 'σ',
-                                                                vars == 'b_Intercept' ~ 'β0',
-                                                                .default = vars))
+dr_time_flux <- dr_time_flux %>% filter(!vars == 'Intercept') %>%
+  mutate(var_type = case_when(str_detect(vars, 'log|delta') ~ 'fixed', .default = 'randommodel'),
+        prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log (S)',
+                              vars == 'b_loghgravityP3.90505eM05' ~ 'log(Market gravity)',
+                              vars == 'sd_DataID__Intercept' ~ '(1|study)',
+                              vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
+                              vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
+                              vars == 'sigma' ~ 'σ',
+                              vars == 'b_Intercept' ~ 'β0',
+                              .default = vars))
 
 # model partial predictions
 newdata <- tidytable(logratio1_S = runif(500, min(vars_time$logratio1_S, na.rm = T), max(vars_time$logratio1_S, na.rm = T)),
@@ -251,7 +283,7 @@ pred_time_flux <- epred_draws(m_time_flux, re_formula = NA, newdata = newdata, v
   select(!hgravity)
 
 
-# MODEL 5: QUANTILE BIOGEO ==================================================================================
+# MODEL 5: QUANTILE SPATIAL ==================================================================================
 
 require(quantreg)
 m_quant <- as.list(rep(NA, 3))

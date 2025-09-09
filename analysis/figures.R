@@ -82,16 +82,6 @@ f_regionN <- ggplot(data = dt_biogeo) +
 
 (f_map_rare / f_map_single)
 
-f_map <- ggplot() +
-  geom_sf(data = world, color='grey75', fill='grey95') +
-  geom_sf(data = points, 
-          aes(fill = DataID), shape = 21, size = 2.5) +
-  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
-  theme_minimal(base_size = 13, base_family = 'Helvetica') +
-  guides(fill = 'none') +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T, alpha = 0.4)
-
-
 
 # ==================================================================================================
 # Figure 2: Spatial model with quantile + nulls
