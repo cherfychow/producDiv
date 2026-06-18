@@ -8,7 +8,7 @@ require(brms)
 require(rfishprod)
 require(tidybayes)
 
-dt_null <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, hgravity, gridcell)
+dt_null <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, Grav_tot, gridcell)
 
 # NULL PRODUCTIVITY/SIZE ===========================================================================
 
@@ -78,14 +78,14 @@ load('dt_null.RData')
 require(brms)
 
 # weakly informative priors
-pr_prod0 <- default_prior(prod0_Lmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+pr_prod0 <- default_prior(prod0_Lmax ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                                 data = dt_null, family = Gamma(link = 'log'))
 pr_prod0$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
 pr_prod0$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_prod0 <- brm(data = dt_null,
-                   formula = prod0_Lmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+                   formula = prod0_Lmax ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                    family = Gamma(link = 'log'),
                    prior = pr_prod0, iter = 5000)
 
@@ -98,23 +98,24 @@ dr_prod0 <- tidy_draws(m_prod0) %>%
   select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-dr_prod0 <- dr_prod0 %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
-                                                               .default = 'randommodel'),
-                                          prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                                vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
-                                                                vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
-                                                                vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
-                                                                vars == 'b_Intercept' ~ 'β0',
-                                                                .default = vars))
+dr_prod0 <- dr_prod0 %>% 
+  mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+                              .default = 'randommodel'),
+        prettyvar = case_when(vars == 'b_logS' ~ 'log(S)',
+                              vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
+                              vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
+                              vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
+                              vars == 'b_Intercept' ~ 'β0',
+                              .default = vars))
 
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgravity = mean(vars_single$hgravity))
+                     Grav_tot = mean(vars_single$Grav_tot))
 
 # partial effect of ∆S
 pred_prod0 <- newdata %>% epred_draws(m_prod0, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
-  select(!hgravity)
+  select(!Grav_tot)
 
 rm(newdata)
 
@@ -200,14 +201,14 @@ load('dt_null.RData')
 require(brms)
 
 # weakly informative priors
-pr_sp0_max <- default_prior(prod0_spmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+pr_sp0_max <- default_prior(prod0_spmax ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                                 data = dt_null, family = Gamma(link = 'log'))
 pr_sp0_max$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
 pr_sp0_max$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_sp0_max <- brm(data = dt_null,
-                   formula = prod0_spmax ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+                   formula = prod0_spmax ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                    family = Gamma(link = 'log'),
                    prior = pr_sp0_max, iter = 5000)
 
@@ -217,14 +218,14 @@ load('dt_null.RData')
 require(brms)
 
 # weakly informative priors
-pr_sp0_min <- default_prior(prod0_spmin ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+pr_sp0_min <- default_prior(prod0_spmin ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                                 data = dt_null, family = Gamma(link = 'log'))
 pr_sp0_min$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
 pr_sp0_min$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_sp0_min <- brm(data = dt_null,
-                   formula = prod0_spmin ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
+                   formula = prod0_spmin ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell) + (1|grav_ID),
                    family = Gamma(link = 'log'),
                    prior = pr_sp0_min, iter = 5000)
 save(m_sp0_min, file = 'm_sp0_min.RData')
@@ -236,29 +237,30 @@ dr_sp0_max <- tidy_draws(m_sp0_max) %>%
   select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-dr_sp0_max <- dr_sp0_max %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
-                                                         .default = 'randommodel'),
-                                    prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                          vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
-                                                          vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
-                                                          vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
-                                                          vars == 'Intercept' ~ 'α',
-                                                          vars == 'b_Intercept' ~ 'β0',
-                                                          .default = vars))
+dr_sp0_max <- dr_sp0_max %>% 
+  mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+                              .default = 'randommodel'),
+        prettyvar = case_when(vars == 'b_logS' ~ 'S',
+                              vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
+                              vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
+                              vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
+                              vars == 'Intercept' ~ 'α',
+                              vars == 'b_Intercept' ~ 'β0',
+                              .default = vars))
 
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgravity = mean(vars_single$hgravity))
+                     Grav_tot = mean(vars_single$Grav_tot))
 
 # partial effect of ∆S
-pred_sp0_max <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
+pred_sp0_max <- newdata %>% mutate(Grav_tot = mean(vars_single$Grav_tot)) %>% 
   epred_draws(m_sp0_max, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
-  select(!hgravity)
+  select(!Grav_tot)
 # partial effect of Market gravity
 pred_sp0_max <- newdata %>% mutate(S = mean(vars_single$S, na.rm = T)) %>% 
   epred_draws(m_sp0_max, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
-  ungroup %>% select(hgravity, prod_hgrav) %>% 
+  ungroup %>% select(Grav_tot, prod_hgrav) %>% 
   bind_cols(pred_sp0_max, .) %>% ungroup
 rm(newdata)
 
@@ -268,25 +270,26 @@ dr_sp0_min <- tidy_draws(m_sp0_min) %>%
   select(starts_with(c('b', 'sd', '.')), shape, Intercept) %>% 
   tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
 
-dr_sp0_min <- dr_sp0_min %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
-                                                               .default = 'randommodel'),
-                                          prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                                vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
-                                                                vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
-                                                                vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
-                                                                vars == 'Intercept' ~ 'α',
-                                                                vars == 'b_Intercept' ~ 'β0',
-                                                                .default = vars))
+dr_sp0_min <- dr_sp0_min %>% 
+  mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
+                              .default = 'randommodel'),
+        prettyvar = case_when(vars == 'b_logS' ~ 'S',
+                              vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
+                              vars == 'sd_DataID__Intercept' ~ '(1|DataID)',
+                              vars == 'sd_gridcell__Intercept' ~ '(1|gridcell)',
+                              vars == 'Intercept' ~ 'α',
+                              vars == 'b_Intercept' ~ 'β0',
+                              .default = vars))
 
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgravity = mean(vars_single$hgravity))
+                     Grav_tot = mean(vars_single$Grav_tot))
 
 # partial effect of ∆S
-pred_sp0_min <- newdata %>% mutate(hgravity = mean(vars_single$hgravity)) %>% 
+pred_sp0_min <- newdata %>% mutate(Grav_tot = mean(vars_single$Grav_tot)) %>% 
   epred_draws(m_sp0_min, re_formula = NA, newdata = ., value = 'prod_S') %>% ungroup %>% 
-  select(!hgravity)
+  select(!Grav_tot)
 
 ggplot(data = dt_null) + 
   # geom_point(data = vars_single, aes(x = S, y = prod_kg), 
@@ -363,14 +366,14 @@ dt_null <- dt_abund0 %>% select(!Area) %>%
 require(brms)
 load('dt_null.RData')
 
-pr_abund0 <- default_prior(prod0_a ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+pr_abund0 <- default_prior(prod0_a ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                                data = dt_null, family = Gamma(link = 'log'))
 pr_abund0$prior[2] <- 'normal(-0.1, 3)' # Market gravity, slight negative
 pr_abund0$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_abund0 <- brm(data = dt_null,
-                  formula = prod0_a ~ log(S) + log(hgravity + .000039) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                  formula = prod0_a ~ log(S) + log(Grav_tot + .000039) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = Gamma(link = 'log'),
                   prior = pr_abund0, iter = 5000)
 save(m_abund0, file = 'm_abund0.RData')
@@ -384,7 +387,7 @@ dr_abund0 <- tidy_draws(m_abund0) %>%
 dr_abund0 <- dr_abund0 %>% mutate(var_type = case_when(str_detect(vars, 'log') ~ 'fixed',
                                                                .default = 'randommodel'),
                                           prettyvar = case_when(vars == 'b_logS' ~ 'S',
-                                                                vars == 'b_loghgravityP3.9eM05' ~ 'Market gravity',
+                                                                vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
                                                                 vars == 'sd_DataID__Intercept' ~ '(1|study)',
                                                                 vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
                                                                 vars == 'b_Intercept' ~ 'β0',
@@ -393,8 +396,8 @@ dr_abund0 <- dr_abund0 %>% mutate(var_type = case_when(str_detect(vars, 'log') ~
 # model partial predictions
 newdata <- tidytable(S = runif(500, min(vars_single$S, na.rm = T), 
                                max(vars_single$S, na.rm = T)) %>% floor(),
-                     hgravity = mean(vars_single$hgravity))
+                     Grav_tot = mean(vars_single$Grav_tot))
 
 # partial effect of ∆S
 pred_abund0 <- epred_draws(m_abund0, re_formula = NA, newdata = newdata, value = 'prod_S') %>% ungroup %>% 
-  select(!hgravity)
+  select(!Grav_tot)

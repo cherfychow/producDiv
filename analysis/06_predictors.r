@@ -8,7 +8,7 @@ require(sf)
 
 
 # read in the global grid layer from PNAS Cinner et al
-grav <- st_read('src/market_gravity/GravityFullPolygons.shp')
+grav <- st_read('../src/market_gravity/GravityFullPolygons.shp')
 summary(grav)
 str(grav)
 grav <- st_make_valid(grav)
@@ -19,7 +19,7 @@ grav <- st_make_valid(grav)
 sf_use_s2(FALSE)
 grav_match <- st_nearest_feature(grid_sf, grav) # gives an index of grav for each grid cell of ours
 grid_sf$hgravity <- st_drop_geometry(grav)$Grav_citie[grav_match]
-grid_sf$grav_nc <- st_drop_geometry(grav)$Grav_NC[grav_match]
+grid_sf$grav_tot <- st_drop_geometry(grav)$Grav_tot[grav_match]
 grid_sf$grav_ID <- st_drop_geometry(grav)$reef_ID[grav_match]
 grid_sf$hgravity[is.na(grid_sf$hgravity)] <- grid_sf$grav_nc[is.na(grid_sf$hgravity)] # use grav NC if cumulative market gravity isn't available
 grid_sf <- grid_sf %>% rename(gridcell = seqnum)
