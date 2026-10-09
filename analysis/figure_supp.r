@@ -8,9 +8,9 @@ require(dplyr)
 
 style <- theme_classic(base_size = 13, base_family = 'Lato') + 
   theme(panel.grid = element_blank(),
-    axis.text = element_text(colour = '#222'),
-    axis.ticks = element_line(linewidth = 0.3, colour = '#222'),
-    axis.line = element_line(linewidth = 0.3, colour = '#222'))
+    axis.text = element_text(colour = '#222222'),
+    axis.ticks = element_line(linewidth = 0.3, colour = '#222222'),
+    axis.line = element_line(linewidth = 0.3, colour = '#222222'))
 
 # ==================================================================================================
 # Spatial model
@@ -20,27 +20,27 @@ style <- theme_classic(base_size = 13, base_family = 'Lato') +
 
 f_space_post1 <- ggplot(dr_spatial %>% filter(var_type == 'main')) +
   stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
-            normalize = 'groups', .width = .95, colour = '#222', linewidth = 0.25) +  
-  scale_fill_manual(values = '#fff', na.value = '#fff') +
+            normalize = 'groups', .width = .95, colour = '#222222', linewidth = 0.25) +  
+  scale_fill_manual(values = '#ffffff', na.value = '#ffffff') +
   stat_spike(aes(x = values, y = prettyvar, ), at = 'median',
-             normalize = 'groups', size = 0, colour = '#222') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+             normalize = 'groups', size = 0, colour = '#222222') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000000', alpha = 0.4) +
   labs(x = NULL, y = NULL) + style +
   guides(fill = 'none')
 
 f_space_post2 <- ggplot(dr_spatial %>% filter(var_type == 'randommodel')) +
   stat_slab(aes(x = values, y = prettyvar, fill = after_stat(level)), 
-            normalize = 'groups', .width = .95, colour = '#222', linewidth = 0.25) +  
-  scale_fill_manual(values = '#fff', na.value = '#fff') +
+            normalize = 'groups', .width = .95, colour = '#222222', linewidth = 0.25) +  
+  scale_fill_manual(values = '#ffffff', na.value = '#ffffff') +
   stat_spike(aes(x = values, y = prettyvar), at = 'median',
-             normalize = 'groups', size = 0, colour = '#222') +
-  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000', alpha = 0.4) +
+             normalize = 'groups', size = 0, colour = '#222222') +
+  geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#000000', alpha = 0.4) +
   labs(x = NULL, y = NULL) + style +
   guides(fill = 'none')
 
 f_space_post <- f_space_post1 / f_space_post2 + plot_layout(heights = c(2, 5))
 f_space_post
-ggsave(f_space_post, filename = '../figures/f_spatial_post.svg', width = 10, height = 14, units = 'cm')
+ggsave(f_space_post, filename = '../figures/supp/f_spatial_post.svg', width = 10, height = 14, units = 'cm')
 
 # ==================================================================================================
 # Spatial model, alternate with N
@@ -70,7 +70,7 @@ f_spaceN_post2 <- ggplot(dr_spatialN %>% filter(var_type == 'randommodel')) +
 
 f_spaceN_post <- f_spaceN_post1 / f_spaceN_post2 + plot_layout(heights = c(2, 5))
 f_spaceN_post
-ggsave(f_spaceN_post, filename = '../figures/f_spatialN_post.svg', width = 10, height = 14, units = 'cm')
+ggsave(f_spaceN_post, filename = '../figures/supp/f_spatialN_post.svg', width = 10, height = 14, units = 'cm')
 
 # ==================================================================================================
 # Biogeography group-level effect posteriors
@@ -102,6 +102,26 @@ f_geo_S <- ggplot(data = dr_geo_S) +
   guides(fill = 'none')
 
 f_geo_b0 + f_geo_S
+
+# ==================================================================================================
+#  Quantile with N
+# ==================================================================================================
+
+ggplot() +
+  labs(x = 'N', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
+  
+  stat_bin_2d(data = vars_single, aes(x = N, y = prod_kg, fill = after_stat(count)), bins = 100) +
+  # geom_density_2d(data = vars_single, aes(x = S, y = prod_kg), colour = '#fff', bins = 8, linewidth = 0.3) +
+  scale_fill_cherulean(name = 'No. of surveys', palette = 'gomphosus', discrete = F, reverse = T, limits = c(1,200)) +
+  
+  scale_x_log10() + scale_y_log10(breaks = single_y) + 
+  style +
+
+  geom_ribbon(data = pred_quantA %>% filter(quantile != 'med'), 
+    aes(x = N, ymin = lower, ymax = higher, group = quantile),
+              fill = 'transparent', colour = 'black', linetype = 'dashed') +
+  geom_line(data = pred_quantA %>% filter(quantile != 'med'), 
+    aes(x = N, y = fit, group = quantile), linewidth = .75) 
 
 # ==================================================================================================
 # Null abundance compare
@@ -144,7 +164,7 @@ f_time_post2 <- ggplot(dr_timeN %>% filter(var_type == 'randommodel')) +
 
 f_time_post <- f_time_post1 / f_time_post2 + plot_layout(heights = c(2, 5))
 f_time_post
-ggsave(f_time_post, filename = '../figures/f_time_post.svg', width = 10, height = 14, units = 'cm')
+ggsave(f_time_post, filename = '../figures/supp/f_time_post.svg', width = 10, height = 14, units = 'cm')
 
 
 # ∆Prod ~ ∆S, log ratio adjacent years =============================================================
@@ -177,7 +197,7 @@ f_flux_post2 <- ggplot() +
 f_flux_post <- f_flux_post1 / f_flux_post2 + plot_layout(heights = c(1,2))
 f_flux_post
 
-ggsave(filename = '../figures/f_time_flux_post.svg', width = 10, height = 14, units = 'cm')
+ggsave(filename = '../figures/supp/f_time_flux_post.svg', width = 10, height = 14, units = 'cm')
 
 
 ## Partial prediction plot =========================================================================

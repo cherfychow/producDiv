@@ -1,0 +1,48 @@
+dag {
+bb="-3.522,-4.515,3.23,3.63"
+"BEF mechanism (complementarity/selection)" [latent,pos="0.973,-1.548"]
+"MPA establishment stage" [pos="-1.198,1.607"]
+"MPA protection" [adjusted,pos="-0.563,1.061"]
+"Restriction level" [pos="-1.209,0.676"]
+"bioavailable energy" [latent,pos="0.443,-3.061"]
+"human gravity" [adjusted,pos="-0.557,-0.004"]
+"size structure" [latent,pos="-0.038,1.598"]
+"species diversity" [exposure,pos="0.979,1.547"]
+"structural complexity" [latent,pos="1.880,1.540"]
+"total abundance" [adjusted,pos="0.473,-0.027"]
+"total biomass (t)" [pos="-1.004,-1.490"]
+"total biomass (t+1)" [pos="-0.999,-2.206"]
+"unknown abiotic" [latent,pos="0.176,-2.258"]
+SST [pos="-0.569,-3.061"]
+biogeography [pos="1.506,-0.027"]
+productivity [outcome,pos="-0.052,-1.521"]
+"BEF mechanism (complementarity/selection)" -> productivity
+"MPA establishment stage" -> "MPA protection"
+"MPA protection" -> "species diversity"
+"MPA protection" -> "total abundance"
+"Restriction level" -> "MPA protection"
+"bioavailable energy" -> "BEF mechanism (complementarity/selection)"
+"bioavailable energy" -> "total abundance"
+"bioavailable energy" -> "total biomass (t)"
+"human gravity" -> "size structure"
+"human gravity" -> "species diversity"
+"human gravity" -> "total abundance"
+"human gravity" -> productivity
+"size structure" -> productivity
+"species diversity" -> "BEF mechanism (complementarity/selection)"
+"structural complexity" -> "species diversity"
+"total abundance" -> "BEF mechanism (complementarity/selection)"
+"total abundance" -> "size structure"
+"total abundance" -> "species diversity"
+"total abundance" -> "total biomass (t)"
+"total abundance" -> productivity
+"total biomass (t)" -> "total biomass (t+1)"
+"total biomass (t)" -> productivity
+"unknown abiotic" -> "BEF mechanism (complementarity/selection)"
+"unknown abiotic" -> "bioavailable energy"
+"unknown abiotic" -> SST
+"unknown abiotic" -> productivity
+SST -> productivity
+biogeography -> "species diversity"
+productivity -> "total biomass (t+1)"
+}

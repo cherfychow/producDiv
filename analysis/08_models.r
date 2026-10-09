@@ -60,11 +60,11 @@ rm(dr_biogeo)
 
 dr_geo_b0 <- as_tidytable(dr_geo_b0) %>% 
   tidyr::pivot_longer(cols = everything(), names_to = 'biogeo', values_to = 'value') %>%
-  mutate(value = -3.52 + value) # intercepts for each level
+  mutate(value = -3.62 + value) # intercepts for each level
 
 dr_geo_S <- as_tidytable(dr_geo_S) %>% 
   tidyr::pivot_longer(cols = everything(), names_to = 'biogeo', values_to = 'value') %>%
-  mutate(value = 1.46 + value)
+  mutate(value = 1.51 + value)
 
 dr_geo_b0 %>% group_by(biogeo) %>% summarise(median = median(value))
 dr_geo_S %>% group_by(biogeo) %>% summarise(median = median(value))
@@ -91,13 +91,6 @@ pred_biogeo <- newdata %>% mutate(Grav_tot = mean(vars_single$Grav_tot)) %>%
   epred_draws(m_spatial, re_formula = prod_kg ~ log(S) + log(Grav_tot + .0000390505) + (1 + log(S) | biogeo), 
               newdata = ., value = 'prod_S') %>% ungroup %>% 
   select(!Grav_tot)
-
-# pred_biogeo <- tidytable(Grav_tot = runif(n_distinct(vars_single$S), min(vars_single$Grav_tot, na.rm = T), 
-#                                               max(vars_single$Grav_tot, na.rm = T)) %>% floor(),
-#                              S = mean(vars_single$S, na.rm = T)) %>% 
-#   epred_draws(m_spatial, re_formula = NA, newdata = ., value = 'prod_hgrav') %>% 
-#   ungroup %>% select(Grav_tot, prod_hgrav) %>% 
-#   bind_cols(pred_spatial, .) %>% ungroup
 
 rm(newdata)
 
@@ -170,61 +163,15 @@ rm(temp)
 # MODEL 2: TEMPORAL ================================================================================
 # does proportional diversity change result in proportional productivity change?
 
-pr_time_full <- default_prior(prod_slope ~ S_slope + log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
-                              data = vars_time_long, family = gaussian())
-pr_time_full
-pr_time_full$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-pr_time_full$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
-set.seed(2)
-m_time_full <- brm(data = vars_time_long,
-                   formula = prod_slope ~ S_slope + log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
-                   family = gaussian(),
-                   prior = pr_time_full, iter = 8000)
-
-## POSTERIORS PREDICTIONS ==========================================================================
-
-# get posterior draws
-dr_time_full <- tidy_draws(m_time_full) %>% 
-  select(starts_with(c('b', 'sd', '.')), sigma) %>% 
-  tidyr::pivot_longer(cols = !starts_with('.'), names_to = 'vars', values_to = 'values')
-
-dr_time_full <- dr_time_full %>% 
-  mutate(var_type = case_when(str_detect(vars, 'log|slope') ~ 'fixed',
-                              .default = 'randommodel'),
-        prettyvar = case_when(vars == 'b_S_slope' ~ '∆log S',
-                              vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
-                              vars == 'sd_DataID__Intercept' ~ '(1|study)',
-                              vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
-                              vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
-                              vars == 'sigma' ~ 'σ',
-                              vars == 'b_Intercept' ~ 'β0',
-                              .default = vars))
-
-# model partial predictions
-# newdata <- tidytable(S_slope = runif(500, min(vars_time_long$S_slope, na.rm = T), 
-#                                      max(vars_time_long$S_slope, na.rm = T)),
-#                      Grav_tot = mean(vars_time_long$Grav_tot))
-
-# partial effect of ∆S
-# pred_time_full <- newdata %>% 
-#   epred_draws(m_time_full, re_formula = NA, newdata = ., value = 'deltaProd_S') %>% ungroup %>% 
-#   select(!Grav_tot)
-
-# partial effect of human gravity
-# pred_time_full <- newdata %>% mutate(S_slope = mean(vars_time_long$S_slope, na.rm = T)) %>% 
-#   epred_draws(m_time_full, re_formula = NA, newdata = ., value = 'deltaProd_hgrav') %>% 
-#   ungroup %>% select(Grav_tot, deltaProd_hgrav) %>% 
-#   bind_cols(pred_time_full, .) %>% ungroup
-
 # Temporal model: with N + SST ===========================================================
 
 pr_timeN <- default_prior(prod_slope ~ S_slope + sst_slope + N_slope + log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
-                             data = vars_time_long, family = gaussian())
+                             data = vars_time, family = gaussian())
 pr_timeN
 pr_timeN$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
 pr_timeN$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
 set.seed(2)
-m_timeN <- brm(data = vars_time_long,
+m_timeN <- brm(data = vars_time,
                   formula = prod_slope ~ S_slope + sst_slope + N_slope + log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = gaussian(),
                   prior = pr_timeN, iter = 8000)
@@ -251,16 +198,16 @@ dr_timeN <- dr_timeN %>%
                               .default = vars))
 
 # model partial predictions
-newdata <- tidytable(S_slope = seq(min(vars_time_long$S_slope, na.rm = T), 
-                                     max(vars_time_long$S_slope, na.rm = T), length.out = 50),
-                    N_slope = seq(min(vars_time_long$N_slope, na.rm = T), 
-                                     max(vars_time_long$N_slope, na.rm = T), length.out = 50),
-                     Grav_tot = mean(vars_time_long$Grav_tot),
-                     sst_slope = mean(vars_time_long$sst_slope))
+newdata <- tidytable(S_slope = seq(min(vars_time$S_slope, na.rm = T), 
+                                     max(vars_time$S_slope, na.rm = T), length.out = 50),
+                    N_slope = seq(min(vars_time$N_slope, na.rm = T), 
+                                     max(vars_time$N_slope, na.rm = T), length.out = 50),
+                     Grav_tot = median(vars_time$Grav_tot),
+                     sst_slope = median(vars_time$sst_slope))
 
 # partial effect of ∆S
-pred_time_full <- newdata %>% mutate(N_slope = mean(N_slope)) %>%
-  epred_draws(m_timeN, re_formula = NA, ndraws = 2000, newdata = ., value = 'prod_S') %>%
+pred_time_full <- newdata %>% mutate(N_slope = mean(vars_time$N_slope)) %>%
+  epred_draws(m_timeN, re_formula = NA, newdata = ., value = 'prod_S') %>%
   ungroup() %>% select(S_slope, prod_S) %>%
   group_by(S_slope) %>% 
   summarise(
@@ -269,8 +216,8 @@ pred_time_full <- newdata %>% mutate(N_slope = mean(N_slope)) %>%
     prod_S_u = quantile(prod_S, 0.975)
     )
 
-temp <- newdata %>% mutate(S_slope = mean(S_slope)) %>%
-  epred_draws(m_timeN, re_formula = NA, ndraws = 2000, newdata = ., value = 'prod_N') %>%
+temp <- newdata %>% mutate(S_slope = mean(vars_time$S_slope)) %>%
+  epred_draws(m_timeN, re_formula = NA, newdata = ., value = 'prod_N') %>%
   ungroup() %>% select(N_slope, prod_N) %>%
   group_by(N_slope) %>% 
   summarise(
@@ -306,7 +253,7 @@ unique(dr_time_flux$vars)
 
 dr_time_flux <- dr_time_flux %>% filter(!vars == 'Intercept') %>%
   mutate(var_type = case_when(str_detect(vars, 'log|delta') ~ 'fixed', .default = 'randommodel'),
-        prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log (S)',
+        prettyvar = case_when(vars == 'b_logratio1_S' ~ '∆log(S)',
                               vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
                               vars == 'sd_DataID__Intercept' ~ '(1|study)',
                               vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
@@ -330,12 +277,13 @@ require(quantreg)
 m_quant <- as.list(rep(NA, 3))
 quants = c(.01, .5, .99)
 for (i in 1:3) {
+  set.seed(4)
   m_quant[[i]] <- rq(formula = log(prod_kg) ~ log(S) + log(Grav_tot + .0000390505), method = "fn",
                         tau = quants[i], data = vars_single)
 }
 rm(quants)
 
-newdata <- tidytable(S = unique(vars_single$S), Grav_tot = mean(vars_single$S))
+newdata <- tidytable(S = unique(vars_single$S), Grav_tot = mean(vars_single$Grav_tot))
 
 pred_quant <- as.list(rep(NA, 3))
 names = c('lwr', 'med', 'upr')
@@ -348,3 +296,26 @@ for (i in 1:3) {
 rm(newdata, names)
 pred_quant <- bind_rows(pred_quant)
 pred_quant <- pred_quant %>% mutate(across(c(fit, lower, higher), .fns = exp))
+
+m_quantA <- as.list(rep(NA, 3))
+quants = c(.01, .5, .99)
+for (i in 1:3) {
+  set.seed(4)
+  m_quantA[[i]] <- rq(formula = log(prod_kg) ~ log(N) + log(Grav_tot + .0000390505), method = "fn",
+                        tau = quants[i], data = vars_single)
+}
+rm(quants)
+
+newdata <- tidytable(N = unique(vars_single$N), Grav_tot = mean(vars_single$Grav_tot))
+
+pred_quantA <- as.list(rep(NA, 3))
+names = c('lwr', 'med', 'upr')
+for (i in 1:3) {
+  pred_quantA[[i]] <- predict(m_quantA[[i]], newdata = newdata, se = 'boot', 
+                      type = 'percentile', interval = 'confidence', level = 0.95) %>% as_tidytable
+  pred_quantA[[i]]$quantile = names[i]
+  pred_quantA[[i]]$N <- newdata$N
+}
+rm(newdata, names)
+pred_quantA <- bind_rows(pred_quantA)
+pred_quantA <- pred_quantA %>% mutate(across(c(fit, lower, higher), .fns = exp))
