@@ -4,6 +4,7 @@
 # Sensitivity tests
 
 require(tidytable)
+require(brms)
 require(rfishprod)
 require(ggplot2)
 require(patchwork)
@@ -119,14 +120,56 @@ pred_length$se_Lmax <- temp$se.fit
 # Sample completeness ==============================================================================
 
 m_spatial_comp <- glmer(data = vars_single %>% filter(compness > 0.8),
-                       prod_kg ~ log(S) + log(hgravity + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                       prod_kg ~ log(S) + log(Grav_tot + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                        family = Gamma(link = 'log'))
 save(m_spatial_comp, file = 'm_spatial_comp.RData')
 
 pred_spatial_comp <- vars_single %>% filter(compness > 0.8) %>% 
-  mutate(hgravity = mean(hgravity)) %>% select(S, hgravity) %>% 
+  mutate(Grav_tot = mean(Grav_tot)) %>% select(S, Grav_tot) %>% 
   distinct
 temp <- predict(m_spatial_comp, newdata = pred_spatial_comp, re.form = NA, se.fit = T)
 pred_spatial_comp$prod_pred <- exp(temp$fit)
 pred_spatial_comp$prod_lwr <- exp(temp$fit - 1.96*temp$se.fit)
 pred_spatial_comp$prod_upr <- exp(temp$fit + 1.96*temp$se.fit)
+
+# MPA effect on gravity ============================================================================
+
+pr_spatial_mpa <- default_prior(prod_kg ~ log(S) + log(Grav_tot + .0000390505) + 
+  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+  (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                            data = vars_single_mpa,
+                            family = Gamma(link = 'log'))
+pr_spatial_mpa$prior[3] <- 'normal(-0.1, 3)' # human gravity, slight negative
+pr_spatial_mpa$prior[4] <- 'normal(0.1, 3)' # richness effect, slight positive
+
+set.seed(1)
+m_spatial_mpa <- brm(data = vars_single_mpa,
+                 formula = prod_kg ~ log(S) + log(Grav_tot + .0000390505) + 
+                 level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+                 (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                 family = Gamma(link = 'log'),
+                 prior = pr_spatial_mpa, iter = 5000)
+saveRDS(m_spatial_mpa, file = 'outputs/m_spatial_mpa.rds')
+print('Spatial MPA model saved')
+
+# MPA effect on gravity N ============================================================================
+
+# weakly informative priors
+pr_spatialN_mpa <- default_prior(prod_kg ~ log(S) + log(N) + log(Grav_tot + .0000390505) + 
+  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+  (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                             data = vars_single_mpa,
+                             family = Gamma(link = 'log'))
+pr_spatialN_mpa$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
+pr_spatialN_mpa$prior[3] <- 'normal(0.1, 3)' # abundance effect, slight positive
+pr_spatialN_mpa$prior[4] <- 'normal(0.1, 3)' # richness effect, slight positive
+
+set.seed(1)
+m_spatialN_mpa <- brm(data = vars_single_mpa,
+                  formula = prod_kg ~ log(S) + log(N) + log(Grav_tot + .0000390505) + 
+                  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+                  (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                  family = Gamma(link = 'log'),
+                  prior = pr_spatialN_mpa, iter = 5000)
+saveRDS(m_spatialN_mpa, file = 'm_spatialN_mpa.rds')
+print('Spatial with N + MPA model saved')
