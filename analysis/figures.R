@@ -415,6 +415,10 @@ ggplot() +
 # Fig. 5: Spatiotemporal figure
 # ==============================================================================
 
+require(dggridR)
+require(tidytable)
+require(stringr)
+
 point_time <- grid_sf %>% select(gridcell, geometry) %>% 
   mutate(geometry = st_centroid(geometry)) %>% # get centroids of each gridcell
   left_join(vars_time_long, ., by = 'gridcell') %>% 
@@ -447,4 +451,68 @@ ggplot() +
   scale_x_log10(breaks = single_x) + scale_y_log10(breaks = single_y) + style +
   facet_grid(rows = vars(quad))
 
+# heat map alternative
+grid_heat <- dgconstruct(area = 500^2, metric = TRUE, resround = 'nearest')
+temp <- grid_sf %>% group_by(gridcell) %>%
+  summarise(centroid = st_centroid(geometry))
+temp$lon <- st_coordinates(temp$centroid)[,1]
+temp$lat <- st_coordinates(temp$centroid)[,2]
+temp$centroid <- NULL
+summary(temp)
 
+heat_match <- dgGEO_to_SEQNUM(dggs = grid_heat, in_lat_deg = temp$lat, in_lon_deg = temp$lon)
+n_distinct(heat_match$seqnum)
+# dggrid object to sf + cell subset
+grid_heat <- dgcellstogrid(grid_heat, cells = sort(unique(heat_match$seqnum)), return_sf = T)
+
+# match up for aggregating within cell
+heat_time <- st_drop_geometry(grid_sf) %>% distinct(gridcell) %>%
+  mutate(heatcellID = heat_match$seqnum) %>%
+  left_join(., grid_heat, by = c('heatcellID' = 'seqnum'))
+
+heat_time <- vars_time_long %>% select(seriesID, quad, delta_certain, gridcell) %>%
+  left_join(., heat_time, by = 'gridcell') %>% 
+  mutate(dir = str_extract(quad, '^[a-z]+')) %>% st_as_sf %>%
+  # fix cells at the edges for plotting later
+  st_wrap_dateline(.) %>% 
+  st_break_antimeridian(., lon_0 = 160) %>% st_make_valid(.)
+
+str(heat_time)
+
+# generate standardised counts
+cellcounts <- heat_time %>% ungroup %>% group_by(heatcellID) %>% 
+  summarise(celltotal = n_distinct(seriesID)) %>%
+  st_drop_geometry
+
+heat_dir <- heat_time %>% ungroup %>% group_by(heatcellID, dir) %>%
+  summarise(count = n_distinct(seriesID), geometry = first(geometry)) %>% 
+  st_as_sf %>% ungroup
+heat_dir <- left_join(heat_dir, cellcounts, by = 'heatcellID')
+heat_dir$propn <- with(heat_dir, count/celltotal)
+
+heat_dircert <- heat_time %>% ungroup %>% 
+  group_by(heatcellID, dir, delta_certain) %>%
+  dplyr::summarise(count = n_distinct(seriesID), geometry = first(geometry)) %>% 
+  st_as_sf %>% ungroup
+heat_dircert <- left_join(heat_dircert, cellcounts, by = 'heatcellID')
+heat_dircert$propn <- with(heat_dircert, count/celltotal)
+
+heat_dir <- st_break_antimeridian(heat_dir, lon_0 = 160)
+heat_dircert <- st_break_antimeridian(heat_dircert, lon_0 = 160)
+grid_heat <- grid_heat %>% filter(seqnum %in% heat_time$heatcellID)
+
+proj <- '+proj=eqearth +lon_0=160 +x_0=0 +y_0=0 +R=6371008.7714 +units=m +no_defs +type=crs'
+
+ggplot() +
+  # base
+  geom_sf(data = world, color='grey75', fill='grey95') +
+  theme_minimal() +
+
+  # all data
+  geom_sf(data = grid_heat, fill = 'grey85', alpha = 0.8, colour = '#FFFFFF') +
+  geom_sf(data = heat_dir, aes(fill = propn), alpha = 0.75) + 
+  scale_fill_cherulean(palette = 'cheridis', discrete = F, name = 'Proportion of surveys') +
+
+  theme(legend.position = 'bottom', panel.grid = element_blank()) +
+  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
+  facet_grid(rows = vars(dir))

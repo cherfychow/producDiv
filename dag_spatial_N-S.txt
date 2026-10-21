@@ -1,9 +1,7 @@
 dag {
 bb="-3.522,-4.515,3.23,3.63"
 "BEF mechanism (complementarity/selection)" [latent,pos="0.973,-1.548"]
-"MPA establishment stage" [pos="-1.198,1.607"]
-"MPA protection" [adjusted,pos="-0.563,1.061"]
-"Restriction level" [pos="-1.209,0.676"]
+"MPA protection" [adjusted,pos="0.492,3.263"]
 "bioavailable energy" [latent,pos="0.443,-3.061"]
 "human gravity" [adjusted,pos="-0.557,-0.004"]
 "size structure" [latent,pos="-0.038,1.598"]
@@ -17,10 +15,9 @@ SST [pos="-0.569,-3.061"]
 biogeography [pos="1.506,-0.027"]
 productivity [outcome,pos="-0.052,-1.521"]
 "BEF mechanism (complementarity/selection)" -> productivity
-"MPA establishment stage" -> "MPA protection"
+"MPA protection" -> "size structure"
 "MPA protection" -> "species diversity"
 "MPA protection" -> "total abundance"
-"Restriction level" -> "MPA protection"
 "bioavailable energy" -> "BEF mechanism (complementarity/selection)"
 "bioavailable energy" -> "total abundance"
 "bioavailable energy" -> "total biomass (t)"

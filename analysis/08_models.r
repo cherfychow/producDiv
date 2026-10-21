@@ -38,6 +38,9 @@ dr_spatial <- dr_spatial %>%
   mutate(var_type = case_when(str_detect(vars, 'b\\_log|sd\\_biogeo\\_\\_logS') ~ 'main', .default = 'randommodel'),
         prettyvar = case_when(vars == 'b_logS' ~ 'log(S)',
                               vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
+                              vars == 'b_level_fishing_protection' ~ 'MPA protection',
+                              vars == 'sd_level_fishing_protection__logGrav_totP3.90505eM05' ~ '(log(gravity) | MPA)',
+                              vars == 'sd_level_fishing_protection__Intercept' ~ '(1 | MPA)',
                               vars == 'sd_biogeo__logS' ~ '(S|biogeo)',
                               vars == 'sd_biogeo__Intercept' ~ '(1|biogeo)',
                               vars == 'sd_DataID__Intercept' ~ '(1|study)',
@@ -96,7 +99,8 @@ rm(newdata)
 
 # partial effect of ∆S
 pred_spatial <- vars_single %>% distinct(S) %>% 
-  mutate(Grav_tot = mean(vars_single$Grav_tot)) %>% 
+  mutate(Grav_tot = mean(vars_single$Grav_tot), 
+    level_fishing_protection = mean(vars_single$level_fishing_protection)) %>% 
   epred_draws(m_spatial, re_formula = NA, newdata = ., value = 'prod_S') %>% 
   ungroup %>% select(!Grav_tot)
 
@@ -140,6 +144,9 @@ dr_spatialN <- dr_spatialN %>%
         prettyvar = case_when(vars == 'b_logS' ~ 'log(S)',
                               vars == 'b_logN' ~ 'log(N)',
                               vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
+                              vars == 'b_level_fishing_protection' ~ 'MPA protection',
+                              vars == 'sd_level_fishing_protection__logGrav_totP3.90505eM05' ~ '(log(gravity) | MPA)',
+                              vars == 'sd_level_fishing_protection__Intercept' ~ '(1 | MPA)',
                               vars == 'sd_biogeo__logS' ~ '(S|biogeo)',
                               vars == 'sd_biogeo__Intercept' ~ '(1|biogeo)',
                               vars == 'sd_DataID__Intercept' ~ '(1|study)',
@@ -150,13 +157,20 @@ dr_spatialN <- dr_spatialN %>%
                               .default = vars)) %>%
   filter(!vars == 'Intercept')
 
-pred_spatialN <- tidytable(S = seq(from = 1, to = 148, length.out = 100), 
-  Grav_tot = mean(vars_single$Grav_tot), N = mean(vars_single$N)) %>% 
+pred_spatialN <- tidytable(
+    S = seq(from = 1, to = 148, length.out = 100), 
+    Grav_tot = mean(vars_single$Grav_tot), 
+    N = mean(vars_single$N),
+    level_fishing_protection = mean(vars_single$level_fishing_protection)
+  ) %>% 
   epred_draws(m_spatialN, re_formula = NA, newdata = ., value = 'prod_S') %>% 
-  ungroup %>% select(!c(Grav_tot, N))
-temp <- tidytable(N = seq(1, to = max(vars_single$N), length.out = 100), 
-  Grav_tot = mean(vars_single$Grav_tot), S = mean(vars_single$S)) %>% 
-  epred_draws(m_spatialN, re_formula = NA, newdata = ., value = 'prod_N') %>% select(prod_N, N)
+  ungroup %>% select(!c(Grav_tot, N, level_fishing_protection))
+temp <- tidytable(
+  N = seq(1, to = max(vars_single$N), length.out = 100), 
+  Grav_tot = mean(vars_single$Grav_tot), 
+  level_fishing_protection = mean(vars_single$level_fishing_protection), 
+  S = mean(vars_single$S)) %>% 
+  epred_draws(m_spatialN, re_formula = NA, newdata = ., value = 'prod_N') %>% ungroup %>% select(prod_N, N)
 pred_spatialN <- bind_cols(pred_spatialN, temp)
 rm(temp)
 
@@ -165,17 +179,23 @@ rm(temp)
 
 # Temporal model: with N + SST ===========================================================
 
-pr_timeN <- default_prior(prod_slope ~ S_slope + sst_slope + N_slope + log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+pr_timeN <- default_prior(prod_slope ~ S_slope + sst_slope + N_slope + mpa_nyear +
+  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+  log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                              data = vars_time, family = gaussian())
 pr_timeN
-pr_timeN$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-pr_timeN$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
+pr_timeN$prior[3] <- 'normal(-0.1, 3)' # human gravity, slight negative
+pr_timeN$prior[6] <- 'normal(0.1, 3)' # richness effect, slight positive
+pr_timeN$prior[2] <- 'normal(0.1, 3)'
+pr_timeN$prior[4] <- 'normal(0.1, 3)'
 set.seed(2)
 m_timeN <- brm(data = vars_time,
-                  formula = prod_slope ~ S_slope + sst_slope + N_slope + log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                  formula = prod_slope ~ S_slope + sst_slope + N_slope + mpa_nyear +
+  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+  log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = gaussian(),
                   prior = pr_timeN, iter = 8000)
-save(m_timeN, file = 'outputs/m_timeN.rda')
+# saveRDS(m_timeN, file = 'outputs/m_timeN_mpa.rds')
 
 # posteriors
 
@@ -189,7 +209,11 @@ dr_timeN <- dr_timeN %>%
         prettyvar = case_when(vars == 'b_S_slope' ~ '∆log(S)',
                               vars == 'b_sst_slope' ~ '∆SST',
                               vars == 'b_N_slope' ~ '∆log(N)',
+                              vars == 'b_mpa_nyear' ~ 'MPA duration',
                               vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
+                              vars == 'b_level_fishing_protection' ~ 'No-take',
+                              vars == 'sd_level_fishing_protection__logGrav_totP3.90505eM05' ~ '(log(gravity) | MPA)',
+                              vars == 'sd_level_fishing_protection__Intercept' ~ '(1 | No-take)',
                               vars == 'sd_DataID__Intercept' ~ '(1|study)',
                               vars == 'sd_gridcell:DataID__Intercept' ~ '(1|location:study)',
                               vars == 'sd_grav_ID__Intercept' ~ '(1|gravity cell)',
@@ -200,10 +224,12 @@ dr_timeN <- dr_timeN %>%
 # model partial predictions
 newdata <- tidytable(S_slope = seq(min(vars_time$S_slope, na.rm = T), 
                                      max(vars_time$S_slope, na.rm = T), length.out = 50),
-                    N_slope = seq(min(vars_time$N_slope, na.rm = T), 
+                     N_slope = seq(min(vars_time$N_slope, na.rm = T), 
                                      max(vars_time$N_slope, na.rm = T), length.out = 50),
-                     Grav_tot = median(vars_time$Grav_tot),
-                     sst_slope = median(vars_time$sst_slope))
+                     Grav_tot = mean(vars_time$Grav_tot),
+                     level_fishing_protection = mean(vars_time$level_fishing_protection),
+                     mpa_nyear = mean(vars_time$mpa_nyear),
+                     sst_slope = mean(vars_time$sst_slope))
 
 # partial effect of ∆S
 pred_time_full <- newdata %>% mutate(N_slope = mean(vars_time$N_slope)) %>%
