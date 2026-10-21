@@ -306,3 +306,19 @@ vars_time2 <- vars_time_long %>% distinct(DataID, seriesID, quad, delta_certain)
   left_join(vars_time2, ., by = c('DataID', 'seriesID')) %>% mutate(quad = str_remove(quad, '\\_certain'))
 rm(tempfirst)
 
+# MPA matching =======================================================
+
+vars_time <- dt_rareass %>% distinct(seriesID, Latitude, Longitude) %>%
+  group_by(seriesID) %>% slice_sample(n = 1) %>%
+  left_join(vars_time, ., by = 'seriesID') # time-series will have more coordinates. just sample one for matching
+
+vars_time <- left_join(vars_time, dt_prot, by = c('Latitude', 'Longitude'))
+vars_time$level_fishing_protection[is.na(vars_time$level_fishing_protection)] <- 1
+
+# duration of MPA protection
+vars_time <- dt_rareass %>% distinct(seriesID, Year) %>% group_by(seriesID) %>% 
+  summarise(Year_end = max(Year)) %>%
+  left_join(vars_time, ., by = 'seriesID') %>%
+  mutate(mpa_nyear = case_when(.default = 0, 
+    is.na(year_established) == F ~ Year_end - year_established))
+vars_time$mpa_nyear[vars_time$mpa_nyear < 0] <- 0

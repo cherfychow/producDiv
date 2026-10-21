@@ -51,6 +51,7 @@ temp$year_established[which(is.na(mpa_match)==F)] <- st_drop_geometry(dt_prot$ye
 
 summary(temp)
 dt_prot <- temp
+write_csv(dt_prot, 'src/dt_protections.csv')
 
 # ==================================================================================================
 #  Gravity matching
@@ -116,9 +117,12 @@ temp <- temp %>% group_by(seriesID, SamplingEventID) %>% slice_sample(n = 1) %>%
 vars_single_mpa <- left_join(vars_single, temp, by = c('seriesID', 'SamplingEventID'))
 vars_single_mpa <- left_join(vars_single_mpa, dt_prot, by = c('Latitude', 'Longitude'))
 
+# match up with sampling events
 vars_single_mpa <- dt_assemblage %>% select(seriesID, SamplingEventID, Year, Month) %>%
   distinct(seriesID, SamplingEventID, Year, .keep_all = T) %>%
   left_join(ungroup(vars_single_mpa), ., by = c('seriesID', 'SamplingEventID', 'Year'))
+
+# temporal matching
 vars_single_mpa <- vars_single_mpa %>% 
   mutate(level_fishing_protection = case_when(.default = level_fishing_protection,
     is.na(level_fishing_protection) ~ 1,
