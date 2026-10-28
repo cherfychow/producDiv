@@ -20,53 +20,13 @@ style <- theme_classic(base_size = 15, base_family = 'Lato') +
 single_x <- c(1,5,10,50,100,150)
 single_y <- c(0,0.001,.01, .1, 1, 10, 100, 500)
 
-
-# ==================================================================================================
-# Figure 1: Dataset map
-# ==================================================================================================
-
 proj <- '+proj=eqearth +lon_0=160 +x_0=0 +y_0=0 +R=6371008.7714 +units=m +no_defs +type=crs'
 
 world <- ne_coastline('medium', returnclass = 'sf') %>%
   st_make_valid(.) %>% st_break_antimeridian(., lon_0 = 160)
-
-# make a geo point object with the data
-point_rare <- vars_rare %>% ungroup %>% group_by(DataID, seriesID) %>%
-  summarise(S = mean(S), prod_kg = mean(prod_kg)) %>% 
-  ungroup %>% distinct() %>% 
-  left_join(distinct(dt_rareass, DataID, seriesID, Latitude, Longitude), ., by = c('DataID', 'seriesID')) %>%
-  st_as_sf(., coords = c('Longitude', 'Latitude'), crs = 4326)
-
-point_single <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, prod_kg) %>% 
-  distinct(seriesID, S, .keep_all = T) %>%
-  # match up with dt_single to get coordinates
-  left_join(., distinct(dt_single, DataID, seriesID, SamplingEventID, Latitude, Longitude), 
-            by = c('DataID', 'seriesID', 'SamplingEventID')) %>%
-  st_as_sf(., coords = c('Longitude', 'Latitude'), crs = 4326)
-
-
-ggplot() +
-  geom_sf(data = world, color='grey75', fill='grey95') +
-  geom_sf(data = bind_rows(point_single, point_rare) %>% arrange(desc(prod_kg)), 
-    aes(fill = prod_kg, size = prod_kg), shape = 21, colour = 'transparent') +
-  scale_fill_cherulean(palette = 'chlorurus', discrete = F, transform = 'log10', breaks = single_y) +
-  scale_size_continuous(range = c(1.5, 15), guide = 'none') +
-  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
-  theme_minimal(base_family = 'Lato', base_size = 13) + 
-  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
-
-ggplot() +
-  geom_sf(data = world, color='grey75', fill='grey95') +
-  geom_sf(data = bind_rows(point_single, point_rare) %>% arrange(desc(S)), 
-    aes(fill = S, size = S), shape = 21, colour = 'transparent') +
-  scale_fill_cherulean(palette = 'chlorurus', discrete = F, transform = 'log10', breaks = single_x) +
-  scale_size_continuous(range = c(1.5, 8), guide = 'none') +
-  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
-  theme_minimal(base_family = 'Lato', base_size = 13) + 
-  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
   
 # ==================================================================================================
-# Figure 2: Spatial pattern + model predictions
+# Figure 1: Spatial pattern + model predictions
 # ==================================================================================================
 
 # Base single year data
@@ -106,181 +66,10 @@ f_spatial2 <- f_spatial_dt +
   geom_line(data = pred_quant %>% filter(quantile != 'med'), 
     aes(x = S, y = fit, group = quantile), linewidth = .75) 
 
-# null models
-f_spatial3 <- f_spatial_dt + 
-  # model prediction
-  geom_ribbon(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr), 
-              fill = 'transparent', colour = 'black', linetype = 'dashed') +
-  
-  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = 'black', linewidth = 1) +
-  
-  # null model lines
-  # max Kmax
-  geom_ribbon(data = pred_sp0_max %>% ungroup %>% group_by(S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr), 
-              fill = 'black', alpha = 0.1) +
-  
-  geom_line(data = pred_sp0_max %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = 'black', alpha = 0.5, linewidth = 0.75) +
-  
-  # min Kmax
-  geom_ribbon(data = pred_sp0_min %>% ungroup %>% group_by(S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr), 
-              fill = 'black', alpha = 0.1) +
-  
-  geom_line(data = pred_sp0_min %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = 'black', alpha = 0.8, linewidth = 0.75) +
-  
-  # null productivity
-  geom_ribbon(data = pred_prod0 %>% ungroup %>% group_by(S) %>%
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)),
-              aes(x = S, ymin = lwr, ymax = upr),
-              fill = 'black', alpha = 0.1) +
-  
-  geom_line(data = pred_prod0 %>% ungroup %>% group_by(S) %>%
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)),
-            aes(x = S, y = prod_S),
-            colour = 'grey30', alpha = 0.5, linewidth = 0.75, linetype = 'dashed') +
-  
-  # null abundance
-  geom_ribbon(data = pred_abund0 %>% ungroup %>% group_by(S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr), 
-              fill = 'darkred', alpha = 0.1) +
-  
-  geom_line(data = pred_abund0 %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = 'darkred', alpha = 0.5, linewidth = 0.75) +
-
-  theme(axis.text.x = element_blank()) + labs(x = NULL)
-
 (f_spatial | f_spatial2)
-f_spatial3
-
-# calculate productivity relative to spatial model
-vars_single <- pred_spatial %>% select(S, prod_S) %>% group_by(S) %>%
-  summarise(prod_S = median(prod_S)) %>%
-  left_join(vars_single, ., by = 'S') %>%
-  mutate(prod_avg = log(prod_kg) - log(prod_S))
-
-# map that onto dataset coordinates
-point_single <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, prod_kg, prod_avg) %>% 
-  distinct(seriesID, S, .keep_all = T) %>%
-  # match up with dt_single to get coordinates
-  left_join(., distinct(dt_single, DataID, seriesID, SamplingEventID, Latitude, Longitude), 
-            by = c('DataID', 'seriesID', 'SamplingEventID')) %>%
-  st_as_sf(., coords = c('Longitude', 'Latitude'), crs = 4326)
-
-ggplot() +
-  geom_sf(data = world, color='grey75', fill='grey95') +
-  geom_sf(data = point_single %>% arrange(desc(prod_avg)), 
-    aes(fill = prod_avg, size = 1.5^(prod_avg)), shape = 21, colour = 'transparent') +
-  scale_fill_cherulean(palette = 'chlorurus', discrete = F, na.value = 'white', limits = c(-6,6)) +
-  scale_size_continuous(range = c(0, 10), guide = 'none') +
-  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
-  theme_minimal(base_family = 'Lato', base_size = 13) + 
-  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
-
-# density distribution of relative productivity
-ggplot(data = vars_single) +
-  geom_density(aes(x = prod_avg), fill = 'white', colour = '#222222') +
-  style
 
 # ==================================================================================================
-# Figure 3: Biogeographical patterns
-# ==================================================================================================
-
-unique(vars_single$biogeo)
-
-# to sort in geographical order
-regions <- c('e_atlantic', 'w_indian', 'c_indopacific', 'c_pacific', 'e_pacific', 'w_atlantic')
-
-vars_single$biogeo <- factor(vars_single$biogeo, levels = regions)
-pred_biogeo$biogeo <- factor(pred_biogeo$biogeo, levels = regions)
-ecoR$biogeo <- factor(ecoR$biogeo, levels = regions)
-ecoR <- ecoR %>% st_make_valid %>% st_break_antimeridian(., lon_0 = 160)
-
-# biogeographical map
-
-ggplot() +
-  geom_sf(data = world, color='grey75', fill='grey95') +
-  geom_sf(data = ecoR, 
-          aes(fill = biogeo), colour = '#333333') +
-  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
-  theme_minimal(base_family = 'Lato') + guides(fill = 'none') + 
-  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank()) +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T)
-
-f_geo <- ggplot(data = vars_single) +
-  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
-  geom_point(aes(x = S, y = prod_kg, colour = biogeo), 
-             shape = 21, size = 1.5, alpha = 0.5, fill = 'transparent') +
-  
-  geom_ribbon(data = pred_biogeo %>% ungroup %>% group_by(biogeo, S) %>% 
-                summarise(lwr = quantile(prod_S, 0.025),
-                          upr = quantile(prod_S, 0.975),
-                          prod_S = quantile(prod_S, 0.5)), 
-              aes(x = S, ymin = lwr, ymax = upr, group = biogeo), 
-              fill = 'transparent', colour = 'black', linetype = 'dashed') +
-  
-  # overall S effect line
-  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S), 
-            colour = 'black', linewidth = 0.75, alpha = 0.4) +
-  
-  geom_line(data = pred_biogeo %>% ungroup %>% group_by(biogeo, S) %>% 
-              summarise(lwr = quantile(prod_S, 0.025),
-                        upr = quantile(prod_S, 0.975),
-                        prod_S = quantile(prod_S, 0.5)), 
-            aes(x = S, y = prod_S, group = biogeo), 
-            colour = 'black', linewidth = 0.75) +
-
-  scale_colour_cherulean(palette = 'cheridis', discrete = T) +
-  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
-  scale_x_log10() + scale_y_log10() +
-  guides(colour = 'none', fill = 'none') +
-  style + facet_wrap(~biogeo)
-
-  f_geomap
-  f_geo
-
-# ==================================================================================================
-# Figure 4: Temporal trends and model
+# Figure 2: Temporal trends and model
 # ==================================================================================================
 
 f_time <- ggplot(data = vars_time_long) +
@@ -353,21 +142,6 @@ f_time <- ggplot(data = vars_time_long) +
 
   f_time + f_time_N
 
-# f_time_x <- ggplot(data = vars_time_long) +
-#   geom_density(aes(x = S_slope), fill = '#CCC', colour = '#666') +
-#   geom_vline(aes(xintercept = 0), linetype = 'dashed', colour = '#666') +
-#   theme_void() + scale_x_continuous(limits = c(-2.5, 1.5))
-
-# f_time_y <- ggplot(data = vars_time_long) +
-#   geom_density(aes(y = prod_slope), fill = '#CCC', colour = '#666') +
-#   geom_hline(aes(yintercept = 0), linetype = 'dashed', colour = '#666') +
-#   theme_void() + scale_y_continuous(limits = c(-3.5, 3))
-
-# f_time <- f_time_x + plot_spacer() + f_time1 + f_time_y + 
-#   plot_layout(ncol = 2, nrow = 2, widths = c(5,1), heights = c(1,6))
-# f_time
-
-
 # Change trajectory bars ===========================================================================
 
 ggplot(data = dt_tchange %>% filter(group == 'full')) +
@@ -412,7 +186,7 @@ ggplot() +
 
 
 # ==============================================================================
-# Fig. 5: Spatiotemporal figure
+# Fig. 3: Spatiotemporal figure
 # ==============================================================================
 
 require(dggridR)

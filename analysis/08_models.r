@@ -11,20 +11,23 @@ require(stringr)
 # what is the diversity-productivity relationship like across space
 
 # weakly informative priors
-pr_spatial <- default_prior(prod_kg ~ log(S) + log(Grav_tot + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+pr_spatial <- default_prior(prod_kg ~ log(S) + log(Grav_tot + .0000390505) + 
+  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+  (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                             data = vars_single,
                             family = Gamma(link = 'log'))
-pr_spatial$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
-pr_spatial$prior[3] <- 'normal(0.1, 3)' # richness effect, slight positive
-
+pr_spatial$prior[3] <- 'normal(-0.1, 3)' # human gravity, slight negative
+pr_spatial$prior[4] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_spatial <- brm(data = vars_single,
-                 formula = prod_kg ~ log(S) + log(Grav_tot + .0000390505) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                 formula = prod_kg ~ log(S) + log(Grav_tot + .0000390505) + 
+                 level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+                 (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                  family = Gamma(link = 'log'),
                  prior = pr_spatial, iter = 5000)
-# save(m_spatial, file = 'm_spatial2.RData')
-print('Geographical model saved')
+saveRDS(m_spatial, file = 'outputs/m_spatial.rds')
+print('Spatial MPA model saved')
 
 ## POSTERIORS PREDICTIONS ==========================================================================
 
@@ -114,7 +117,9 @@ spatial_resid <- spatial_resid %>% mutate(resid = prod_kg - prod_S)
 # with abundance
 
 # weakly informative priors
-pr_spatialN <- default_prior(prod_kg ~ log(S) + log(Grav_tot + .0000390505) + log(N) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+pr_spatialN <- default_prior(prod_kg ~ log(S) + log(N) + log(Grav_tot + .0000390505) + 
+  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+  (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                              data = vars_single,
                              family = Gamma(link = 'log'))
 pr_spatialN$prior[2] <- 'normal(-0.1, 3)' # human gravity, slight negative
@@ -123,11 +128,13 @@ pr_spatialN$prior[4] <- 'normal(0.1, 3)' # richness effect, slight positive
 
 set.seed(1)
 m_spatialN <- brm(data = vars_single,
-                  formula = prod_kg ~ log(S) + log(Grav_tot + .0000390505) + log(N) + (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
+                  formula = prod_kg ~ log(S) + log(N) + log(Grav_tot + .0000390505) + 
+                  level_fishing_protection + (log(Grav_tot + .0000390505) | level_fishing_protection) +
+                  (1 + log(S)|biogeo) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = Gamma(link = 'log'),
                   prior = pr_spatialN, iter = 5000)
-print('Spatial with N model saved')
-
+saveRDS(m_spatialN, file = 'm_spatialN.rds')
+print('Spatial with N + MPA model saved')
 
 
 ## POSTERIORS PREDICTIONS ==========================================================================
@@ -195,7 +202,7 @@ m_timeN <- brm(data = vars_time,
   log(Grav_tot + .0000390505) + (1|DataID) + (1|gridcell:DataID) + (1|grav_ID),
                   family = gaussian(),
                   prior = pr_timeN, iter = 8000)
-# saveRDS(m_timeN, file = 'outputs/m_timeN_mpa.rds')
+# saveRDS(m_timeN, file = 'outputs/m_timeN.rds')
 
 # posteriors
 
@@ -209,7 +216,7 @@ dr_timeN <- dr_timeN %>%
         prettyvar = case_when(vars == 'b_S_slope' ~ '∆log(S)',
                               vars == 'b_sst_slope' ~ '∆SST',
                               vars == 'b_N_slope' ~ '∆log(N)',
-                              vars == 'b_mpa_nyear' ~ 'MPA duration',
+                              vars == 'b_nyear' ~ 'MPA duration',
                               vars == 'b_logGrav_totP3.90505eM05' ~ 'log(total gravity)',
                               vars == 'b_level_fishing_protection' ~ 'No-take',
                               vars == 'sd_level_fishing_protection__logGrav_totP3.90505eM05' ~ '(log(gravity) | MPA)',

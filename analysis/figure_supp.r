@@ -12,6 +12,60 @@ style <- theme_classic(base_size = 13, base_family = 'Lato') +
     axis.ticks = element_line(linewidth = 0.3, colour = '#222222'),
     axis.line = element_line(linewidth = 0.3, colour = '#222222'))
 
+# REQUIRES
+# var_single
+# var_rare
+# ecoR
+# all model objects
+# posterior draw objects generated from 08_models.r
+
+source('analysis/load_data.r')
+
+
+# ==================================================================================================
+# Dataset map
+# ==================================================================================================
+
+proj <- '+proj=eqearth +lon_0=160 +x_0=0 +y_0=0 +R=6371008.7714 +units=m +no_defs +type=crs'
+
+world <- ne_coastline('medium', returnclass = 'sf') %>%
+  st_make_valid(.) %>% st_break_antimeridian(., lon_0 = 160)
+
+# make a geo point object with the data
+point_rare <- vars_rare %>% ungroup %>% group_by(DataID, seriesID) %>%
+  summarise(S = mean(S), prod_kg = mean(prod_kg)) %>% 
+  ungroup %>% distinct() %>% 
+  left_join(distinct(dt_rareass, DataID, seriesID, Latitude, Longitude), ., by = c('DataID', 'seriesID')) %>%
+  st_as_sf(., coords = c('Longitude', 'Latitude'), crs = 4326)
+
+point_single <- vars_single %>% select(DataID, seriesID, SamplingEventID, S, prod_kg) %>% 
+  distinct(seriesID, S, .keep_all = T) %>%
+  # match up with dt_single to get coordinates
+  left_join(., distinct(dt_single, DataID, seriesID, SamplingEventID, Latitude, Longitude), 
+            by = c('DataID', 'seriesID', 'SamplingEventID')) %>%
+  st_as_sf(., coords = c('Longitude', 'Latitude'), crs = 4326)
+
+
+ggplot() +
+  geom_sf(data = world, color='grey75', fill='grey95') +
+  geom_sf(data = bind_rows(point_single, point_rare) %>% arrange(desc(prod_kg)), 
+    aes(fill = prod_kg, size = prod_kg), shape = 21, colour = 'transparent') +
+  scale_fill_cherulean(palette = 'chlorurus', discrete = F, transform = 'log10', breaks = single_y) +
+  scale_size_continuous(range = c(1.5, 15), guide = 'none') +
+  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
+  theme_minimal(base_family = 'Lato', base_size = 13) + 
+  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
+
+ggplot() +
+  geom_sf(data = world, color='grey75', fill='grey95') +
+  geom_sf(data = bind_rows(point_single, point_rare) %>% arrange(desc(S)), 
+    aes(fill = S, size = S), shape = 21, colour = 'transparent') +
+  scale_fill_cherulean(palette = 'chlorurus', discrete = F, transform = 'log10', breaks = single_x) +
+  scale_size_continuous(range = c(1.5, 8), guide = 'none') +
+  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
+  theme_minimal(base_family = 'Lato', base_size = 13) + 
+  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank())
+
 # ==================================================================================================
 # Spatial model
 # ==================================================================================================
@@ -73,6 +127,97 @@ f_spaceN_post
 ggsave(f_spaceN_post, filename = '../figures/supp/f_spatialN_post.svg', width = 10, height = 14, units = 'cm')
 
 # ==================================================================================================
+# Agnostic models
+# ==================================================================================================
+
+f_spatial3 <- ggplot() +
+  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
+  
+  stat_bin_2d(data = vars_single, aes(x = S, y = prod_kg, fill = after_stat(count)), bins = 100) +
+  # geom_density_2d(data = vars_single, aes(x = S, y = prod_kg), colour = '#fff', bins = 8, linewidth = 0.3) +
+  scale_fill_cherulean(palette = 'gomphosus', discrete = F, reverse = T, limits = c(1,200)) +
+  
+  scale_x_log10(breaks = single_x) + scale_y_log10(breaks = single_y) + 
+  style + 
+  # model prediction
+  geom_ribbon(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = 'transparent', colour = 'black', linetype = 'dashed') +
+  
+  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = 'black', linewidth = 1) +
+  
+  # null model lines
+  # max Kmax
+  geom_ribbon(data = pred_sp0_max %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = 'black', alpha = 0.1) +
+  
+  geom_line(data = pred_sp0_max %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = 'black', alpha = 0.5, linewidth = 0.75) +
+  
+  # min Kmax
+  geom_ribbon(data = pred_sp0_min %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = 'black', alpha = 0.1) +
+  
+  geom_line(data = pred_sp0_min %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = 'black', alpha = 0.8, linewidth = 0.75) +
+  
+  # null productivity
+  geom_ribbon(data = pred_prod0 %>% ungroup %>% group_by(S) %>%
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)),
+              aes(x = S, ymin = lwr, ymax = upr),
+              fill = 'black', alpha = 0.1) +
+  
+  geom_line(data = pred_prod0 %>% ungroup %>% group_by(S) %>%
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)),
+            aes(x = S, y = prod_S),
+            colour = 'grey30', alpha = 0.5, linewidth = 0.75, linetype = 'dashed') +
+  
+  # null abundance
+  geom_ribbon(data = pred_abund0 %>% ungroup %>% group_by(S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr), 
+              fill = 'darkred', alpha = 0.1) +
+  
+  geom_line(data = pred_abund0 %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = 'darkred', alpha = 0.5, linewidth = 0.75) +
+
+  theme(axis.text.x = element_blank()) + labs(x = NULL)
+
+# ==================================================================================================
 # Biogeography group-level effect posteriors
 # ==================================================================================================
 
@@ -102,6 +247,67 @@ f_geo_S <- ggplot(data = dr_geo_S) +
   guides(fill = 'none')
 
 f_geo_b0 + f_geo_S
+
+# ==================================================================================================
+# Biogeographical effects and map
+# ==================================================================================================
+
+unique(vars_single$biogeo)
+
+# to sort in geographical order
+regions <- c('e_atlantic', 'w_indian', 'c_indopacific', 'c_pacific', 'e_pacific', 'w_atlantic')
+
+vars_single$biogeo <- factor(vars_single$biogeo, levels = regions)
+pred_biogeo$biogeo <- factor(pred_biogeo$biogeo, levels = regions)
+ecoR$biogeo <- factor(ecoR$biogeo, levels = regions)
+ecoR <- ecoR %>% st_make_valid %>% st_break_antimeridian(., lon_0 = 160)
+
+# biogeographical map
+
+ggplot() +
+  geom_sf(data = world, color='grey75', fill='grey95') +
+  geom_sf(data = ecoR, 
+          aes(fill = biogeo), colour = '#333333') +
+  coord_sf(crs = proj, ylim = c(-4366274.76, 4366274.76)) +
+  theme_minimal(base_family = 'Lato') + guides(fill = 'none') + 
+  theme(panel.grid.minor.x = element_blank(), panel.grid.major.x = element_blank()) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T)
+
+f_geo <- ggplot(data = vars_single) +
+  labs(x = 'S', y = bquote("Productivity (kg⋅ha"^-1~"⋅day"^-1~")")) +
+  geom_point(aes(x = S, y = prod_kg, colour = biogeo), 
+             shape = 21, size = 1.5, alpha = 0.5, fill = 'transparent') +
+  
+  geom_ribbon(data = pred_biogeo %>% ungroup %>% group_by(biogeo, S) %>% 
+                summarise(lwr = quantile(prod_S, 0.025),
+                          upr = quantile(prod_S, 0.975),
+                          prod_S = quantile(prod_S, 0.5)), 
+              aes(x = S, ymin = lwr, ymax = upr, group = biogeo), 
+              fill = 'transparent', colour = 'black', linetype = 'dashed') +
+  
+  # overall S effect line
+  geom_line(data = pred_spatial %>% ungroup %>% group_by(S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S), 
+            colour = 'black', linewidth = 0.75, alpha = 0.4) +
+  
+  geom_line(data = pred_biogeo %>% ungroup %>% group_by(biogeo, S) %>% 
+              summarise(lwr = quantile(prod_S, 0.025),
+                        upr = quantile(prod_S, 0.975),
+                        prod_S = quantile(prod_S, 0.5)), 
+            aes(x = S, y = prod_S, group = biogeo), 
+            colour = 'black', linewidth = 0.75) +
+
+  scale_colour_cherulean(palette = 'cheridis', discrete = T) +
+  scale_fill_cherulean(palette = 'cheridis', discrete = T) +
+  scale_x_log10() + scale_y_log10() +
+  guides(colour = 'none', fill = 'none') +
+  style + facet_wrap(~biogeo)
+
+  f_geomap
+  f_geo
 
 # ==================================================================================================
 #  Quantile with N

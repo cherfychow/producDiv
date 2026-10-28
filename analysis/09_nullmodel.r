@@ -1,7 +1,7 @@
 
 
 # ProducDiv
-# Fitting null model
+# Fitting agnostic models
 
 require(tidytable)
 require(brms)
