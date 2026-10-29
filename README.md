@@ -1,5 +1,5 @@
 # ProducDiv
-## Reef fish biodiversity promotes productivity
+### Reef fish biodiversity promotes productivity
 
 This repository contains the data and code used for the analysis and figure generation the ProducDiv project. The project takes a macroecological approach to assess biodiversity-productivity links in global reef fishes across space and time. 
 
@@ -11,7 +11,7 @@ Disclaimer: This repository may still undergo revisions and changes.
 
 ---
 
-### Requirements
+## Requirements
 
 The analysis pipeline in this repo runs in an R environment (version 4.3.3). The code's been run in both Linux and Mac operating systems, but not trialed in PCs. Here are the following package dependencies:
 
@@ -38,7 +38,7 @@ The analysis pipeline in this repo runs in an R environment (version 4.3.3). The
 |     tidytable        |     0.11.2       |
 |     xgboost          |     1.7.7.1      |
 
-### Repository structure
+## Repository structure
 
 - **`analysis`**: analysis pipeline R scripts
 - **`src`**: source and derived data
