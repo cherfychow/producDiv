@@ -46,7 +46,7 @@ The analysis pipeline in this repo runs in an R environment (version 4.3.3). The
 
 ### Data
 
-  - `biogeo.shp`: shapefile of global EEZs assigned biogeographic region sensu Kulbicki et al. 2014
+  - `biogeo.shp`: shapefile of global EEZs assigned biogeographic region sensu [Kulbicki et al. 2013](https://doi.org/10.1371/journal.pone.0081847)
   - `dt_completeness.csv`: data on sample completeness
   - `dt_protections.csv`: data on area-based no-take restrictions
   - `dt_tchange.csv`: data on S:Prod time-series links
